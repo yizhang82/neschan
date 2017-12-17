@@ -50,6 +50,7 @@ enum nes_addr_mode
     nes_addr_mode_imp,        // implicit
     nes_addr_mode_acc,        //          val = A
     nes_addr_mode_imm,        //          val = arg_8
+    nes_addr_mode_ind,        //          val = peek16(arg_16)
     nes_addr_mode_rel,        //          val = arg_8, as offset
     nes_addr_mode_abs,        //          val = arg_16, LSB then MSB                   
     nes_addr_mode_zp,         //          val = PEEK(arg_8)
@@ -99,66 +100,45 @@ public :
     // Set status register P accordingly
     void compute_processor_status() { /* @NYI */ }
 
-    void decode_adress_mode(nes_addr_mode mode)
-    {
-
-    }
-
     void load_program(vector<uint8_t> &&program, uint16_t start_addr)
     {
         // load at addr 1000 for convenience
         _mem.set_bytes(start_addr, program.data(), program.size());
     }
 
-    void reset_context()
+    void power_on()
     {
+        // @TODO - Simulate full power-on state
         memset(&_context, 0, sizeof(_context));
     }
 
     void run(uint16_t addr)
     {
-        reset_context();
+        power_on();
         _context.PC = addr;
         execute();
     }
 
 public :
-    void set_carry_flag(bool set)
-    {
-        set_flag(PROCESSOR_STATUS_CARRY_MASK, set);
-    }
-    void set_zero_flag(bool set)
-    {
-        set_flag(PROCESSOR_STATUS_ZERO_MASK, set);
-    }
-    void set_interrupt_flag(bool set)
-    {
-        set_flag(PROCESSOR_STATUS_INTERRUPT_MASK, set);
-    }
-    void set_decimal_flag(bool set)
-    {
-        set_flag(PROCESSOR_STATUS_DECIMAL_MASK, set);
-    }
-    void set_s1_flag(bool set)
-    {
-        set_flag(PROCESSOR_STATUS_S1_MASK, set);
-    }
-    void set_s2_flag(bool set) 
-    {
-        set_flag(PROCESSOR_STATUS_S2_MASK, set);
-    }
-    void set_overflow_flag(bool set)
-    {
-        set_flag(PROCESSOR_STATUS_OVERFLOW_MASK, set);
-    }
-    void set_negative_flag(bool set)
-    {
-        set_flag(PROCESSOR_STATUS_NEGATIVE_MASK, set);
-    }
-    uint8_t get_carry()
-    {
-        return (_context.S & PROCESSOR_STATUS_CARRY_MASK);
-    }
+    void set_carry_flag(bool set) { set_flag(PROCESSOR_STATUS_CARRY_MASK, set); }
+    uint8_t get_carry() { return (_context.S & PROCESSOR_STATUS_CARRY_MASK); }
+
+    void set_zero_flag(bool set) { set_flag(PROCESSOR_STATUS_ZERO_MASK, set); }
+    bool is_zero() { return _context.S & PROCESSOR_STATUS_ZERO_MASK; }
+
+    void set_interrupt_flag(bool set) { set_flag(PROCESSOR_STATUS_INTERRUPT_MASK, set); }
+    bool is_interrupt() { return _context.S & PROCESSOR_STATUS_INTERRUPT_MASK; }
+
+    void set_decimal_flag(bool set) { set_flag(PROCESSOR_STATUS_DECIMAL_MASK, set); }
+
+    void set_s1_flag(bool set) { set_flag(PROCESSOR_STATUS_S1_MASK, set); }
+    void set_s2_flag(bool set) { set_flag(PROCESSOR_STATUS_S2_MASK, set); }
+
+    void set_overflow_flag(bool set) { set_flag(PROCESSOR_STATUS_OVERFLOW_MASK, set); }
+    bool is_overflow() { return _context.S & PROCESSOR_STATUS_OVERFLOW_MASK; }
+
+    void set_negative_flag(bool set) { set_flag(PROCESSOR_STATUS_NEGATIVE_MASK, set); }
+    bool is_negative() { return _context.S & PROCESSOR_STATUS_NEGATIVE_MASK; }
 
     uint8_t peek(uint16_t addr) { return _mem.get_byte(addr); }
     void poke(uint16_t addr, uint8_t value) { _mem.set_byte(addr, value); }
@@ -281,6 +261,11 @@ private :
         {
             // zero page indexed Y 
             return decode_byte() + _context.Y;
+        }
+        else if (addr_mode == nes_addr_mode::nes_addr_mode_ind)
+        {
+            // Indirect
+            return _mem.get_word(decode_word());
         }
         else if (addr_mode == nes_addr_mode::nes_addr_mode_abs)
         {

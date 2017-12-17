@@ -98,6 +98,20 @@ void nes_cpu::execute()
         IS_OP_CODE(CLI, 0x58)
         IS_OP_CODE(CLV, 0xB8)
 
+        IS_OP_CODE_MODE(JMP, 0x4c, abs)
+        IS_OP_CODE_MODE(JMP, 0x6c, ind)
+        
+        IS_OP_CODE_MODE(BCC, 0x90, rel)
+        IS_OP_CODE_MODE(BCS, 0xb0, rel)
+        IS_OP_CODE_MODE(BEQ, 0xf0, rel)
+        IS_OP_CODE_MODE(BMI, 0x30, rel)
+        IS_OP_CODE_MODE(BNE, 0xd0, rel)
+        IS_OP_CODE_MODE(BPL, 0x10, rel)
+        IS_OP_CODE_MODE(BVS, 0x70, rel)
+
+        IS_OP_CODE_MODE(BIT, 0x24, zp)
+        IS_OP_CODE_MODE(BIT, 0x2c, abs)
+
         case nes_op_code::BRK:
             return;
 
@@ -217,34 +231,75 @@ void nes_cpu::ASL(nes_addr_mode addr_mode)
 }
 
 // BCC - Branch if Carry Clear
-void nes_cpu::BCC(nes_addr_mode addr_mode) {}
+void nes_cpu::BCC(nes_addr_mode addr_mode) 
+{
+    if (is_overflow())
+        PC() = PC() + (int8_t) decode_byte();
+}
+
 
 // BCS - Branch if Carry Set 
-void nes_cpu::BCS(nes_addr_mode addr_mode) {}
+void nes_cpu::BCS(nes_addr_mode addr_mode) 
+{
+    if (get_carry())
+        PC() = PC() + (int8_t) decode_byte();
+}
 
 // BEQ - Branch if Equal
-void nes_cpu::BEQ(nes_addr_mode addr_mode) {}
+void nes_cpu::BEQ(nes_addr_mode addr_mode) 
+{
+    if (is_zero())
+        PC() = PC() + (int8_t) decode_byte();
+}
 
 // BIT - Bit test
-void nes_cpu::BIT(nes_addr_mode addr_mode) {}
+void nes_cpu::BIT(nes_addr_mode addr_mode) 
+{
+    uint8_t val = read_operand(decode_operand(addr_mode));
+    uint8_t new_val = val & A();
+
+    set_zero_flag(new_val == 0);
+    set_overflow_flag(val & 0x40);
+    set_negative_flag(val & 0x80);
+}
 
 // BMI - Branch if minus
-void nes_cpu::BMI(nes_addr_mode addr_mode) {}
+void nes_cpu::BMI(nes_addr_mode addr_mode) 
+{
+    if (is_negative())
+        PC() = PC() + (int8_t) decode_byte(); 
+}
 
 // BNE - Branch if not equal
-void nes_cpu::BNE(nes_addr_mode addr_mode) {}
+void nes_cpu::BNE(nes_addr_mode addr_mode) 
+{
+    if (!is_zero())
+        PC() = PC() + (int8_t) decode_byte(); 
+}
 
 // BPL - Branch if positive 
-void nes_cpu::BPL(nes_addr_mode addr_mode) {}
+void nes_cpu::BPL(nes_addr_mode addr_mode) 
+{
+    if (!is_negative())
+        PC() = PC() + (int8_t) decode_byte(); 
+}
 
 // BRK - Force interrupt
 void nes_cpu::BRK(nes_addr_mode addr_mode) {}
 
 // BVC - Branch if overflow clear
-void nes_cpu::BVC(nes_addr_mode addr_mode) {}
+void nes_cpu::BVC(nes_addr_mode addr_mode) 
+{
+    if (!is_overflow())
+        PC() = PC() + (int8_t) decode_byte(); 
+}
 
 // BVS - Branch if overflow set
-void nes_cpu::BVS(nes_addr_mode addr_mode) {}
+void nes_cpu::BVS(nes_addr_mode addr_mode) 
+{
+    if (!is_overflow())
+        PC() = PC() + (int8_t) decode_byte(); 
+}
 
 // CLC - Clear carry flag
 void nes_cpu::CLC(nes_addr_mode addr_mode) { set_carry_flag(false); }
@@ -308,7 +363,12 @@ void nes_cpu::INY(nes_addr_mode addr_mode)
 }
 
 // JMP - Jump 
-void nes_cpu::JMP(nes_addr_mode addr_mode) {}
+void nes_cpu::JMP(nes_addr_mode addr_mode) 
+{
+    PC() = decode_operand_addr(addr_mode);
+
+    // No impact to flags
+}
 
 // JSR - Jump to subroutine
 void nes_cpu::JSR(nes_addr_mode addr_mode) {}
