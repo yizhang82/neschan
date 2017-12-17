@@ -112,6 +112,15 @@ void nes_cpu::execute()
         IS_OP_CODE_MODE(BIT, 0x24, zp)
         IS_OP_CODE_MODE(BIT, 0x2c, abs)
 
+        IS_OP_CODE(PHA, 0x48)
+        IS_OP_CODE(PHP, 0x08)
+        IS_OP_CODE(PLA, 0x68)
+        IS_OP_CODE(PLP, 0x28)
+
+        IS_OP_CODE(RTI, 0x40)
+        IS_OP_CODE(RTS, 0x60)
+        IS_OP_CODE_MODE(JSR, 0x20, abs)
+
         case nes_op_code::BRK:
             return;
 
@@ -371,7 +380,13 @@ void nes_cpu::JMP(nes_addr_mode addr_mode)
 }
 
 // JSR - Jump to subroutine
-void nes_cpu::JSR(nes_addr_mode addr_mode) {}
+void nes_cpu::JSR(nes_addr_mode addr_mode) 
+{
+    // note: we push the actual return address -1, which is the current place (before decoding the 16-bit addr) + 1
+    push_word(PC() + 1);
+
+    PC() = decode_operand_addr(addr_mode);
+}
 
 // LDX - Load X register
 void nes_cpu::LDX(nes_addr_mode addr_mode) 
@@ -407,16 +422,28 @@ void nes_cpu::LSR(nes_addr_mode addr_mode)
 void nes_cpu::NOP(nes_addr_mode addr_mode) {}
 
 // PHA - Push accumulator
-void nes_cpu::PHA(nes_addr_mode addr_mode) {}
+void nes_cpu::PHA(nes_addr_mode addr_mode) 
+{
+    push_byte(A());
+}
 
 // PHP - Push processor status
-void nes_cpu::PHP(nes_addr_mode addr_mode) {}
+void nes_cpu::PHP(nes_addr_mode addr_mode) 
+{
+    push_byte(P());
+}
 
 // PLA - Pull accumulator
-void nes_cpu::PLA(nes_addr_mode addr_mode) {}
+void nes_cpu::PLA(nes_addr_mode addr_mode) 
+{
+    A() = pop_byte();
+}
 
 // PLP - Pull processor status
-void nes_cpu::PLP(nes_addr_mode addr_mode) {}
+void nes_cpu::PLP(nes_addr_mode addr_mode) 
+{
+    P() = pop_byte();
+}
 
 // ROL - Rotate left
 void nes_cpu::ROL(nes_addr_mode addr_mode)
@@ -450,7 +477,12 @@ void nes_cpu::ROR(nes_addr_mode addr_mode)
 void nes_cpu::RTI(nes_addr_mode addr_mode) {}
 
 // RTS - Return from subroutine
-void nes_cpu::RTS(nes_addr_mode addr_mode) {}
+void nes_cpu::RTS(nes_addr_mode addr_mode) 
+{
+    // See JSR - we pushed actual return address - 1
+    uint16_t addr = pop_word() + 1;
+    PC() = addr;
+}
 
 // SEC - Set carry flag
 void nes_cpu::SEC(nes_addr_mode addr_mode) { set_carry_flag(true); }

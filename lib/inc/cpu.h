@@ -109,7 +109,10 @@ public :
     void power_on()
     {
         // @TODO - Simulate full power-on state
-        memset(&_context, 0, sizeof(_context));
+        _context.P = 0x34;
+        _context.A = _context.X = _context.Y = 0;
+        _context.S = 0xfd;
+        _context.PC = 0;
     }
 
     void run(uint16_t addr)
@@ -121,13 +124,13 @@ public :
 
 public :
     void set_carry_flag(bool set) { set_flag(PROCESSOR_STATUS_CARRY_MASK, set); }
-    uint8_t get_carry() { return (_context.S & PROCESSOR_STATUS_CARRY_MASK); }
+    uint8_t get_carry() { return (_context.P & PROCESSOR_STATUS_CARRY_MASK); }
 
     void set_zero_flag(bool set) { set_flag(PROCESSOR_STATUS_ZERO_MASK, set); }
-    bool is_zero() { return _context.S & PROCESSOR_STATUS_ZERO_MASK; }
+    bool is_zero() { return _context.P & PROCESSOR_STATUS_ZERO_MASK; }
 
     void set_interrupt_flag(bool set) { set_flag(PROCESSOR_STATUS_INTERRUPT_MASK, set); }
-    bool is_interrupt() { return _context.S & PROCESSOR_STATUS_INTERRUPT_MASK; }
+    bool is_interrupt() { return _context.P & PROCESSOR_STATUS_INTERRUPT_MASK; }
 
     void set_decimal_flag(bool set) { set_flag(PROCESSOR_STATUS_DECIMAL_MASK, set); }
 
@@ -135,10 +138,10 @@ public :
     void set_s2_flag(bool set) { set_flag(PROCESSOR_STATUS_S2_MASK, set); }
 
     void set_overflow_flag(bool set) { set_flag(PROCESSOR_STATUS_OVERFLOW_MASK, set); }
-    bool is_overflow() { return _context.S & PROCESSOR_STATUS_OVERFLOW_MASK; }
+    bool is_overflow() { return _context.P & PROCESSOR_STATUS_OVERFLOW_MASK; }
 
     void set_negative_flag(bool set) { set_flag(PROCESSOR_STATUS_NEGATIVE_MASK, set); }
-    bool is_negative() { return _context.S & PROCESSOR_STATUS_NEGATIVE_MASK; }
+    bool is_negative() { return _context.P & PROCESSOR_STATUS_NEGATIVE_MASK; }
 
     uint8_t peek(uint16_t addr) { return _mem.get_byte(addr); }
     void poke(uint16_t addr, uint8_t value) { _mem.set_byte(addr, value); }
@@ -149,6 +152,42 @@ public :
     uint16_t &PC() { return _context.PC; }
     uint8_t &P() { return _context.P; }
     uint8_t &S() { return _context.S; }
+
+public :
+    //
+    // Stack operations
+    //
+    #define STACK_OFFSET 0x100
+
+    void push_byte(uint8_t val)
+    {
+        // stack grow top->down
+        // no underflow/overflow detection
+        _mem.set_byte((_context.S--) + STACK_OFFSET, val);
+    }
+
+    void push_word(uint16_t val)
+    {
+        // high-order bytes push first since the stack grow top->down and the machine is little-endian
+        push_byte(val >> 8);
+        push_byte(val & 0xff);
+    }
+
+    int8_t pop_byte()
+    {
+        // stack grow top->down
+        // no underflow/overflow detection        
+        _context.S++;
+        return _mem.get_byte(_context.S + STACK_OFFSET);
+    }
+
+    int16_t pop_word()    
+    {
+        // low-order bytes pop first since the stack grow top->down and the machine is little-endian
+        uint8_t lo = pop_byte();
+        uint8_t hi = pop_byte();
+        return uint16_t(hi << 8) + lo;
+    }
 
 private :
     void execute();
@@ -168,9 +207,9 @@ private :
     void set_flag(uint8_t mask, bool set)
     {
         if (set)
-            _context.S |= mask;
+            _context.P |= mask;
         else
-            _context.S &= ~mask;
+            _context.P &= ~mask;
     }
 
     void cycle(uint8_t count)
