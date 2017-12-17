@@ -73,21 +73,6 @@ struct nes_cpu_context
     unsigned char P;        // Status register - used by ALU unit
 };
 
-// well-known offsets for each address mode
-// for example, ADC_imm (0x69) = ADC (0x60) + imm (0x9)
-// This only applies for ALU instructions
-enum nes_addr_mode_offset
-{
-    nes_addr_mode_offset_imm = 0x9,
-    nes_addr_mode_offset_zp = 0x5,
-    nes_addr_mode_offset_zp_ind_x = 0x15,
-    nes_addr_mode_offset_abs = 0xd,
-    nes_addr_mode_offset_abs_x = 0x1d,
-    nes_addr_mode_offset_abs_y = 0x19,
-    nes_addr_mode_offset_ind_x = 0x1,
-    nes_addr_mode_offset_ind_y = 0x11
-};
-
 enum nes_op_code
 {
     ORA_base = 0x00,
@@ -215,27 +200,72 @@ private :
     }
 
 private :
+    enum operand_kind : uint16_t
+    {
+        operand_kind_a,
+        operand_kind_imm,
+        operand_kind_addr
+    };
+
+    struct operand
+    {
+        uint16_t addr_or_value;
+        operand_kind kind;
+    };
+
     //
     // Implements all address mode
     //
-    uint8_t get_operand(nes_addr_mode addr_mode)
-    {
+    operand decode_operand(nes_addr_mode addr_mode)
+    {    
         if (addr_mode == nes_addr_mode::nes_addr_mode_acc)
         {
-            return _context.X;
+            return { 0, operand_kind_a };
         }
         else if (addr_mode == nes_addr_mode::nes_addr_mode_imm)
         {
             // immediate - next byte is a constant
-            return decode_byte();
+            return { decode_byte(), operand_kind_imm };
         }
         else
         {
-            return peek(get_operand_addr(addr_mode));
+            return { decode_operand_addr(addr_mode), operand_kind_addr };
         }
     }
 
-    uint16_t get_operand_addr(nes_addr_mode addr_mode)
+    uint8_t read_operand(operand op)
+    {
+        switch (op.kind)
+        {
+        case operand_kind_a:
+            return A();
+        case operand_kind_imm:
+            // constants are always 8-bit
+            return (uint8_t)op.addr_or_value;
+        case operand_kind_addr:
+            return peek(op.addr_or_value);
+        default:
+            assert(false);
+            return -1;
+        }
+    }
+
+    void write_operand(operand &op, int8_t value)
+    {
+        switch (op.kind)
+        {
+        case operand_kind_a:
+            A() = value;
+            break;
+        case operand_kind_addr:
+            poke(op.addr_or_value, value);
+            break;
+        default:
+            assert(false);
+        }
+    }
+
+    uint16_t decode_operand_addr(nes_addr_mode addr_mode)
     {
         if (addr_mode == nes_addr_mode::nes_addr_mode_zp)
         {
@@ -294,7 +324,7 @@ private :
     // http://obelisk.me.uk/6502/reference.html
     //
 
-    void determine_alu_flag(uint8_t value)
+    void calc_alu_flag(uint8_t value)
     {
         set_zero_flag(value == 0);
         set_negative_flag(value & 0x80);
@@ -306,96 +336,173 @@ private :
         set_overflow_flag((old_value & 0x80) != (new_value & 0x80));
     }
 
-    // Add with carry
-    void ADC(nes_addr_mode addr_mode)
-    {
-        uint8_t val = get_operand(addr_mode);
-        A() = val + A() + get_carry();
+    // ADC - Add with carry
+    void ADC(nes_addr_mode addr_mode);
 
-        // flags
-        determine_overflow_flag(val, A());
-        determine_alu_flag(A());
-    }
+    // AND - Logical AND
+    void AND(nes_addr_mode addr_mode);
 
-    // Logical AND
-    void AND(nes_addr_mode addr_mode)
-    {
-        uint8_t val = get_operand(addr_mode);
-        A() &= val;
+    // ASL - Arithmetic Shift Left
+    void ASL(nes_addr_mode addr_mode);
+    
+    // BCC - Branch if Carry Clear
+    void BCC(nes_addr_mode addr_mode);
 
-        // flags
-        determine_alu_flag(val);
-    }
+    // BCS - Branch if Carry Set 
+    void BCS(nes_addr_mode addr_mode);
 
-    // Compare 
-    void CMP(nes_addr_mode addr_mode)
-    {
-        uint8_t val = get_operand(addr_mode);
+    // BEQ - Branch if Equal
+    void BEQ(nes_addr_mode addr_mode);
 
-        // flags
-        if (A() < val)
-        {
-            set_negative_flag(true);
-        }
-        else if (A() > val)
-        {
-            set_carry_flag(true);
-        }
-        else
-        {
-            set_carry_flag(true);
-            set_zero_flag(true);
-        }
-    }
+    // BIT - Bit test
+    void BIT(nes_addr_mode addr_mode);
+
+    // BMI - Branch if minus
+    void BMI(nes_addr_mode addr_mode);
+
+    // BNE - Branch if not equal
+    void BNE(nes_addr_mode addr_mode);
+
+    // BPL - Branch if positive 
+    void BPL(nes_addr_mode addr_mode);
+
+    // BRK - Force interrupt
+    void BRK(nes_addr_mode addr_mode);
+
+    // BVC - Branch if overflow clear
+    void BVC(nes_addr_mode addr_mode);
+
+    // BVS - Branch if overflow set
+    void BVS(nes_addr_mode addr_mode);
+
+    // CLC - Clear carry flag
+    void CLC(nes_addr_mode addr_mode);
+
+    // CLD - Clear decimal mode
+    void CLD(nes_addr_mode addr_mode);
+
+    // CLI - Clear interrupt disable
+    void CLI(nes_addr_mode addr_mode);
+
+    // CLV - Clear overflow flag
+    void CLV(nes_addr_mode addr_mode);
+
+    // CMP - Compare 
+    void CMP(nes_addr_mode addr_mode);
+
+    // CPX - Compare X register
+    void CPX(nes_addr_mode addr_mode);
+
+    // CPY - Compare Y register
+    void CPY(nes_addr_mode addr_mode);
+
+    // DEC - Decrement memory
+    void DEC(nes_addr_mode addr_mode);
+
+    // DEX - Decrement X register
+    void DEX(nes_addr_mode addr_mode);
+
+    // DEY - Decrement Y register
+    void DEY(nes_addr_mode addr_mode);
 
     // Exclusive OR 
-    void EOR(nes_addr_mode addr_mode)
-    {
-        uint8_t val = get_operand(addr_mode);
-        A() ^= val;
+    void EOR(nes_addr_mode addr_mode);
 
-        // flags
-        determine_alu_flag(A());
-    }
+    // INC - Increment memory
+    void INC(nes_addr_mode addr_mode);
 
-    // Logical Inclusive OR
-    void ORA(nes_addr_mode addr_mode)
-    {
-        uint8_t val = get_operand(addr_mode);
-        A() |= val;
+    // INX - Increment X
+    void INX(nes_addr_mode addr_mode);
 
-        determine_alu_flag(A());
-    }
+    // INY - Increment Y
+    void INY(nes_addr_mode addr_mode);
 
-    // Subtract with carry
-    void SBC(nes_addr_mode addr_mode)
-    {
-        uint8_t val = get_operand(addr_mode);
-        A() = A() - val - (1 - get_carry());
+    // JMP - Jump 
+    void JMP(nes_addr_mode addr_mode);
 
-        // flags
-        set_carry_flag(A() > val);
-        determine_overflow_flag(val, A());
-        determine_alu_flag(A());
-    }
+    // JSR - Jump to subroutine
+    void JSR(nes_addr_mode addr_mode);
 
-    // Load Accumulator
-    void LDA(nes_addr_mode addr_mode)
-    {
-        uint8_t val = get_operand(addr_mode);
-        A() = val;
+    // LDA - Load Accumulator
+    void LDA(nes_addr_mode addr_mode);
 
-        // flags
-        determine_alu_flag(A());
-    }
+    // LDX - Load X register
+    void LDX(nes_addr_mode addr_mode);
 
-    // Store Accumulator  
-    void STA(nes_addr_mode addr_mode)
-    {
-        poke(get_operand_addr(addr_mode), A());
-        
-        // Doesn't impact any flags
-    }
+    // LDY - Load Y register
+    void LDY(nes_addr_mode addr_mode);
+
+    // LSR - Logical shift right
+    void LSR(nes_addr_mode addr_mode);
+
+    // NOP - NOP
+    void NOP(nes_addr_mode addr_mode);
+
+    // ORA - Logical Inclusive OR
+    void ORA(nes_addr_mode addr_mode);
+
+    // PHA - Push accumulator
+    void PHA(nes_addr_mode addr_mode);
+
+    // PHP - Push processor status
+    void PHP(nes_addr_mode addr_mode);
+
+    // PLA - Pull accumulator
+    void PLA(nes_addr_mode addr_mode);
+
+    // PLP - Pull processor status
+    void PLP(nes_addr_mode addr_mode);
+
+    // ROL - Rotate left
+    void ROL(nes_addr_mode addr_mode);
+
+    // ROR - Rotate right
+    void ROR(nes_addr_mode addr_mode);
+
+    // RTI - Return from interrupt
+    void RTI(nes_addr_mode addr_mode);
+
+    // RTS - Return from subroutine
+    void RTS(nes_addr_mode addr_mode);
+
+    // SBC - Subtract with carry
+    void SBC(nes_addr_mode addr_mode);
+
+    // SEC - Set carry flag
+    void SEC(nes_addr_mode addr_mode);
+
+    // SED - Set decimal flag
+    void SED(nes_addr_mode addr_mode);
+
+    // SEI - Set interrupt disable
+    void SEI(nes_addr_mode addr_mode);
+
+    // STA - Store Accumulator  
+    void STA(nes_addr_mode addr_mode);
+
+    // STX - Store X
+    void STX(nes_addr_mode addr_mode);
+
+    // STY- Store Y
+    void STY(nes_addr_mode addr_mode);
+
+    // TAX - Transfer accumulator to X 
+    void TAX(nes_addr_mode addr_mode);
+
+    // TAY - Transfer accumulator to Y
+    void TAY(nes_addr_mode addr_mode);
+
+    // TSX - Transfer stack pointer to X 
+    void TSX(nes_addr_mode addr_mode);
+
+    // TXA - Transfer X to acc
+    void TXA(nes_addr_mode addr_mode);
+
+    // TXS - Transfer X to stack pointer
+    void TXS(nes_addr_mode addr_mode);
+
+    // TYA - Transfer Y to accumulator
+    void TYA(nes_addr_mode addr_mode);
 
 private :
     nes_memory      &_mem;

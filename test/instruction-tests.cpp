@@ -18,12 +18,16 @@ TEST_CASE("instruction tests") {
                 0xa9, 0x01,     // LDA 0x01
                 0x65, 0x20,     // ADD (0x20)
                 0x85, 0x21,     // STA (0x21)
+                0xe6, 0x21,     // INC (0x21)
+                0xa4, 0x21,     // LDY (0x21)
+                0xc8,           // INY
                 0x00
             },
             0x1000);
         cpu.run(0x1000);
         CHECK(cpu.peek(0x20) == 0x10);
-        CHECK(cpu.peek(0x21) == 0x11);
+        CHECK(cpu.peek(0x21) == 0x12);
         CHECK(cpu.A() == 0x11);
+        CHECK(cpu.Y() == 0x13);
     }
 }
