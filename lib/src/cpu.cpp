@@ -1,7 +1,8 @@
 #include "stdafx.h"
 #include "cpu.h"
+#include "trace.h"
 
-#define IS_ALU_OP_CODE_(op, offset, mode) case nes_op_code::op##_base + offset : op(nes_addr_mode::nes_addr_mode_##mode); break; 
+#define IS_ALU_OP_CODE_(op, offset, mode) case nes_op_code::op##_base + offset : LOG(get_op_str(#op, nes_addr_mode::nes_addr_mode_##mode)); op(nes_addr_mode::nes_addr_mode_##mode); break; 
 #define IS_ALU_OP_CODE(op) \
     IS_ALU_OP_CODE_(op, 0x9, imm) \
     IS_ALU_OP_CODE_(op, 0x5, zp) \
@@ -12,7 +13,7 @@
     IS_ALU_OP_CODE_(op, 0x1, ind_x) \
     IS_ALU_OP_CODE_(op, 0x11, ind_y)
 
-#define IS_RMW_OP_CODE_(op, opcode, offset, mode) case opcode + offset : op(nes_addr_mode::nes_addr_mode_##mode); break; 
+#define IS_RMW_OP_CODE_(op, opcode, offset, mode) case opcode + offset : LOG(get_op_str(#op, nes_addr_mode::nes_addr_mode_##mode)); op(nes_addr_mode::nes_addr_mode_##mode); break; 
 #define IS_RMW_OP_CODE(op, opcode) \
     IS_RMW_OP_CODE_(op, opcode, 0x6, zp) \
     IS_RMW_OP_CODE_(op, opcode, 0xa, acc) \
@@ -20,8 +21,8 @@
     IS_RMW_OP_CODE_(op, opcode, 0xe, abs) \
     IS_RMW_OP_CODE_(op, opcode, 0x1e, abs_x)
 
-#define IS_OP_CODE(op, opcode) case opcode : op(nes_addr_mode_imp); break;
-#define IS_OP_CODE_MODE(op, opcode, mode) case opcode : op(nes_addr_mode_##mode); break;
+#define IS_OP_CODE(op, opcode) case opcode : LOG(get_op_str(#op, nes_addr_mode_imp)); op(nes_addr_mode_imp); break;
+#define IS_OP_CODE_MODE(op, opcode, mode) case opcode : LOG(get_op_str(#op, nes_addr_mode_##mode)); op(nes_addr_mode_##mode); break;
 
 void nes_cpu::execute()
 {
@@ -121,12 +122,258 @@ void nes_cpu::execute()
         IS_OP_CODE(RTS, 0x60)
         IS_OP_CODE_MODE(JSR, 0x20, abs)
 
-        case nes_op_code::BRK:
+        case 0x02:
+        case 0x12:
+        case 0x22:
+        case 0x32:
+        case 0x42:
+        case 0x52:
+        case 0x62:
+        case 0x72:
+        case 0x92:
+        case 0xB2:
+        case 0xd2:
+        case 0xf2:
+            LOG(get_op_str("KIL", nes_addr_mode_imp)); 
+            KIL(nes_addr_mode_imp);
+            return;
+
+        case 0x80:
+        case 0xea:
+            LOG(get_op_str("NOP", nes_addr_mode_imp)); 
+            NOP(nes_addr_mode_imp);
+            return;
+
+        case 0x00:
+            LOG(get_op_str("NOP", nes_addr_mode_imp)); 
             return;
 
         default:
             break;
         }
+    }
+}
+
+static void append_space(string &str)
+{
+    str.append(1, ' ');
+}
+
+static void append_hex(string &str, uint8_t val)
+{
+    if (val < 10)
+        str.append(1, val + '0');
+    else
+        str.append(1, val - 10 + 'A');
+}
+
+static void append_byte(string &str, uint8_t val)
+{
+    append_hex(str, val >> 4);
+    append_hex(str, val & 0xf);
+}
+
+static void append_word(string &str, uint16_t val)
+{
+    append_byte(str, val >> 8);
+    append_byte(str, val & 0xff);
+}
+
+static void align(string &str, int loc)
+{
+    if (str.size() < loc)
+        str.append(loc - str.size(), ' ');
+}
+
+
+// Follow Nintendulator log format
+// 0         1         2         3         4         5         6         7         8
+// 012345678901234567890123456789012345678901234567890123456789012345678901234567890
+// C000  4C F5 C5  JMP $C5F5                       A:00 X:00 Y:00 P:24 SP:FD CYC:  0
+string nes_cpu::get_op_str(const char *op, nes_addr_mode addr_mode)
+{
+    int operand_size = 0;
+    switch (addr_mode)
+    {
+        case nes_addr_mode::nes_addr_mode_imp: 
+        case nes_addr_mode::nes_addr_mode_acc:
+            break;
+
+        case nes_addr_mode::nes_addr_mode_imm:
+        case nes_addr_mode::nes_addr_mode_zp:
+        case nes_addr_mode::nes_addr_mode_zp_ind_x:
+        case nes_addr_mode::nes_addr_mode_zp_ind_y:
+        case nes_addr_mode::nes_addr_mode_ind_x:
+        case nes_addr_mode::nes_addr_mode_ind_y:
+            operand_size = 1;
+            break;
+
+        case nes_addr_mode::nes_addr_mode_ind:
+        case nes_addr_mode::nes_addr_mode_abs:
+        case nes_addr_mode::nes_addr_mode_abs_x:
+        case nes_addr_mode::nes_addr_mode_abs_y:
+            operand_size = 2;
+
+        default:
+            assert(false);
+    }
+
+    string msg;
+
+    // 0         1         2         3         4         5         6         7         8
+    // 012345678901234567890123456789012345678901234567890123456789012345678901234567890
+    // C000  4C F5 C5  JMP $C5F5                       A:00 X:00 Y:00 P:24 SP:FD CYC:  0
+
+    // Opcode
+    // We've already decoded the op code so it's PC - 1
+    append_word(msg, PC() - 1);
+    align(msg, 6);
+
+    // Dump instruction bytes
+    for (int i = 0; i < operand_size + 1; ++i)
+    {
+        append_byte(msg, peek(PC() - 1 + i));
+        append_space(msg);
+    }
+
+    align(msg, 16);
+
+    msg.append(op);
+    append_operand_str(msg, addr_mode);
+
+    align(msg, 48);
+
+    msg.append("A:");
+    append_byte(msg, A());
+    append_space(msg);
+
+    msg.append("X:");
+    append_byte(msg, X());
+    append_space(msg);
+
+    msg.append("Y:");
+    append_byte(msg, Y());
+    append_space(msg);
+
+    msg.append("P:");
+    append_byte(msg, P());
+    append_space(msg);
+
+    msg.append("SP:");
+    append_byte(msg, S());
+    append_space(msg);
+
+    msg.append("CYC:");
+    msg.append("  0");
+    msg.append("\n");
+
+    return msg;
+}
+
+void nes_cpu::append_operand_str(string &str, nes_addr_mode addr_mode)
+{
+    append_space(str);
+    switch (addr_mode)
+    {
+    case nes_addr_mode::nes_addr_mode_imp:
+        return;
+
+    case nes_addr_mode::nes_addr_mode_acc:
+        str.append(" A ");
+        break;
+
+    case nes_addr_mode::nes_addr_mode_imm:
+        str.append("#$");
+        append_byte(str, peek(PC()));
+        break;
+
+    case nes_addr_mode::nes_addr_mode_zp:
+    case nes_addr_mode::nes_addr_mode_zp_ind_x:
+    case nes_addr_mode::nes_addr_mode_zp_ind_y:
+    {
+        str.append("$");
+        uint8_t addr = peek(PC());
+        append_byte(str, addr);
+        if (addr_mode == nes_addr_mode_zp_ind_x)
+        {
+            str.append(",X @ ");
+            append_byte(str, addr + X());
+        }
+        else if (addr_mode == nes_addr_mode_zp_ind_y)
+        {
+            str.append(", Y @ ");
+            append_byte(str, addr + X());
+        }
+
+        str.append(" = ");
+        append_byte(str, peek(addr));
+        break;
+    }
+    case nes_addr_mode::nes_addr_mode_abs:
+    case nes_addr_mode::nes_addr_mode_abs_x:
+    case nes_addr_mode::nes_addr_mode_abs_y:
+    {
+        str.append("$");
+        uint16_t addr = peek_word(PC());
+        append_word(str, addr);
+        if (addr_mode == nes_addr_mode_zp_ind_x)
+        {
+            str.append(",X @ ");
+            append_word(str, addr + X());
+        }
+        else if (addr_mode == nes_addr_mode_zp_ind_y)
+        {
+            str.append(", Y @ ");
+            append_word(str, addr + Y());
+        }
+
+        str.append(" = ");
+        append_byte(str, peek(addr));
+        break;
+    }
+    case nes_addr_mode::nes_addr_mode_ind:
+    {
+        uint16_t addr = peek_word(PC());
+        str.append("(");
+        append_word(str, addr);
+        str.append(") = ");
+
+        append_word(str, peek_word(addr));
+        break;
+    }
+
+    case nes_addr_mode::nes_addr_mode_ind_x:
+    {
+        uint8_t addr = peek(decode_byte());
+        str.append("$(");
+        append_byte(str, addr);
+        str.append(",X) @ ");
+        append_byte(str, addr + X());
+        uint16_t final_addr = peek(addr + _context.X) + (((uint16_t)peek(addr + _context.X + 1)) << 8);
+        str.append(" = ");
+        append_word(str, final_addr);
+        str.append(" = ");
+        append_byte(str, peek(final_addr));
+        break;
+    }
+    case nes_addr_mode::nes_addr_mode_ind_y:
+    {
+        uint8_t addr = peek(PC());
+        str.append("($");
+        append_byte(str, addr);
+        str.append("),Y = ");
+        uint16_t final_addr = peek(addr) + (((uint16_t)peek(addr + 1)) << 8);
+        append_word(str, final_addr);
+        str.append(" @ ");
+        final_addr += _context.Y;
+        append_word(str, final_addr);
+        str.append(" = ");
+        append_byte(str, peek(final_addr));
+        break;
+    }
+
+    default:
+        assert(false);
     }
 }
 
@@ -555,4 +802,9 @@ void nes_cpu::TYA(nes_addr_mode addr_mode)
     A() = Y();
 
     calc_alu_flag(A());
+}
+
+// KIL - Kill?
+void nes_cpu::KIL(nes_addr_mode addr_mode)
+{
 }

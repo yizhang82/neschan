@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "doctest.h"
+#include "trace.h"
 
 using namespace std;
 
@@ -10,6 +11,8 @@ TEST_CASE("instruction tests") {
     nes_cpu cpu(ram);
 
     SUBCASE("simple LDA/STA/ADD") {
+        INIT_TRACE("neschan.simple.log");
+
         // @TODO - We need an assembler to make testing easier
         cpu.load_program(
             {

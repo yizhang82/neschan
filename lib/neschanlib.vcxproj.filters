@@ -26,6 +26,9 @@
     <ClInclude Include="inc\memory.h">
       <Filter>inc</Filter>
     </ClInclude>
+    <ClInclude Include="inc\trace.h">
+      <Filter>inc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\cpu.cpp">

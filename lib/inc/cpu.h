@@ -84,7 +84,6 @@ enum nes_op_code
     LDA_base = 0xA0,
     CMP_base = 0xC0,
     SBC_base = 0xE0,
-    BRK = 0x00,
 };
 
 
@@ -144,6 +143,7 @@ public :
     bool is_negative() { return _context.P & PROCESSOR_STATUS_NEGATIVE_MASK; }
 
     uint8_t peek(uint16_t addr) { return _mem.get_byte(addr); }
+    uint16_t peek_word(uint16_t addr) { return _mem.get_word(addr); }
     void poke(uint16_t addr, uint8_t value) { _mem.set_byte(addr, value); }
     
     uint8_t &A() { return _context.A; }
@@ -360,6 +360,9 @@ private :
         set_overflow_flag((old_value & 0x80) != (new_value & 0x80));
     }
 
+    string get_op_str(const char *op, nes_addr_mode addr_mode);
+    void append_operand_str(string &str, nes_addr_mode addr_mode);
+
     // ADC - Add with carry
     void ADC(nes_addr_mode addr_mode);
 
@@ -527,6 +530,9 @@ private :
 
     // TYA - Transfer Y to accumulator
     void TYA(nes_addr_mode addr_mode);
+
+    // KIL - Kill?
+    void KIL(nes_addr_mode addr_mode);
 
 private :
     nes_memory      &_mem;
