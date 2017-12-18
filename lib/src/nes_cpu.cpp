@@ -13,6 +13,15 @@
     IS_ALU_OP_CODE_(op, 0x1, ind_x) \
     IS_ALU_OP_CODE_(op, 0x11, ind_y)
 
+#define IS_ALU_OP_CODE_NO_IMM(op) \
+    IS_ALU_OP_CODE_(op, 0x5, zp) \
+    IS_ALU_OP_CODE_(op, 0x15, zp_ind_x) \
+    IS_ALU_OP_CODE_(op, 0xd, abs) \
+    IS_ALU_OP_CODE_(op, 0x1d, abs_x) \
+    IS_ALU_OP_CODE_(op, 0x19, abs_y) \
+    IS_ALU_OP_CODE_(op, 0x1, ind_x) \
+    IS_ALU_OP_CODE_(op, 0x11, ind_y)
+
 #define IS_RMW_OP_CODE_(op, opcode, offset, mode) case opcode + offset : LOG(get_op_str(#op, nes_addr_mode::nes_addr_mode_##mode)); op(nes_addr_mode::nes_addr_mode_##mode); break; 
 #define IS_RMW_OP_CODE(op, opcode) \
     IS_RMW_OP_CODE_(op, opcode, 0x6, zp) \
@@ -23,6 +32,9 @@
 
 #define IS_OP_CODE(op, opcode) case opcode : LOG(get_op_str(#op, nes_addr_mode_imp)); op(nes_addr_mode_imp); break;
 #define IS_OP_CODE_MODE(op, opcode, mode) case opcode : LOG(get_op_str(#op, nes_addr_mode_##mode)); op(nes_addr_mode_##mode); break;
+
+#define IS_UNOFFICIAL_OP_CODE(op, opcode) case opcode : LOG(get_op_str(#op, nes_addr_mode_imp, false)); op(nes_addr_mode_imp); break;
+#define IS_UNOFFICIAL_OP_CODE_MODE(op, opcode, mode) case opcode : LOG(get_op_str(#op, nes_addr_mode_##mode, false)); op(nes_addr_mode_##mode); break;
 
 void nes_cpu::execute()
 {
@@ -43,7 +55,7 @@ void nes_cpu::execute()
         IS_ALU_OP_CODE(EOR)
         IS_ALU_OP_CODE(ORA)
         IS_ALU_OP_CODE(SBC)
-        IS_ALU_OP_CODE(STA)
+        IS_ALU_OP_CODE_NO_IMM(STA)
         IS_ALU_OP_CODE(LDA)
 
         IS_RMW_OP_CODE(ASL, 0x0)
@@ -144,14 +156,47 @@ void nes_cpu::execute()
             KIL(nes_addr_mode_imp);
             return;
 
-        case 0x80:
-        case 0xea:
-            LOG(get_op_str("NOP", nes_addr_mode_imp)); 
-            NOP(nes_addr_mode_imp);
-            break;
+        // The real NOP
+        IS_OP_CODE_MODE(NOP, 0xea, imp)
 
-        case 0x00:
-            LOG(get_op_str("NOP", nes_addr_mode_imp)); 
+        // All the other "NOP"
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x80, imm)
+
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x04, zp)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x44, zp)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x64, zp)
+
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x0c, abs)
+
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x14, zp_ind_x)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x34, zp_ind_x)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x54, zp_ind_x)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x74, zp_ind_x)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0xd4, zp_ind_x)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0xf4, zp_ind_x)
+
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x1c, abs_x)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x3c, abs_x)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x5c, abs_x)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x7c, abs_x)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0xdc, abs_x)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0xfc, abs_x)
+       
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x89, imm)
+
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x82, imm)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0xc2, imm)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0xe2, imm)
+
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x1a, imp)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x3a, imp)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x5a, imp)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x7a, imp)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0xda, imp)
+        IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0xfa, imp)
+
+        case 00:
+            LOG(get_op_str("BRK", nes_addr_mode::nes_addr_mode_imp));
             return;
 
         default:
@@ -198,7 +243,7 @@ static void align(string &str, int loc)
 // 0         1         2         3         4         5         6         7         8
 // 012345678901234567890123456789012345678901234567890123456789012345678901234567890
 // C000  4C F5 C5  JMP $C5F5                       A:00 X:00 Y:00 P:24 SP:FD CYC:  0
-string nes_cpu::get_op_str(const char *op, nes_addr_mode addr_mode)
+string nes_cpu::get_op_str(const char *op, nes_addr_mode addr_mode, bool is_official)
 {
     int operand_size = 0;
     switch (addr_mode)
@@ -248,7 +293,15 @@ string nes_cpu::get_op_str(const char *op, nes_addr_mode addr_mode)
         append_space(msg);
     }
 
-    align(msg, 16);
+    if (is_official)
+    {
+        align(msg, 16);
+    }
+    else
+    {
+        align(msg, 15);
+        msg.append("*");
+    }
 
     msg.append(op);
     append_operand_str(msg, addr_mode);
@@ -524,7 +577,10 @@ void nes_cpu::ASL(nes_addr_mode addr_mode)
 
     // flags
     set_carry_flag(val & 0x80);
-    set_zero_flag(A() == 0);
+
+    // @DOCBUG: 
+    // http://obelisk.me.uk/6502/reference.html#ASL incorrectly states ASL detects A == 0
+    set_zero_flag(new_val == 0); 
     set_negative_flag(new_val & 0x80);
 }
 
@@ -738,12 +794,20 @@ void nes_cpu::LSR(nes_addr_mode addr_mode)
 
     // flags
     set_carry_flag(val & 0x1);
-    set_zero_flag(A() == 0);
+    // @DOCBUG: 
+    // http://obelisk.me.uk/6502/reference.html#ASL incorrectly states ASL detects A == 0
+    set_zero_flag(new_val == 0);
     set_negative_flag(new_val & 0x80);
 }
 
 // NOP - NOP
-void nes_cpu::NOP(nes_addr_mode addr_mode) {}
+void nes_cpu::NOP(nes_addr_mode addr_mode) 
+{
+    // For effective NOP (op codes that are "effectively" no-op but not the real NOP 0xea)
+    // We always needed to decode the parameter
+    if (addr_mode != nes_addr_mode::nes_addr_mode_imp)
+        decode_operand(addr_mode);
+}
 
 // PHA - Push accumulator
 void nes_cpu::PHA(nes_addr_mode addr_mode) 

@@ -384,7 +384,7 @@ private :
             ((val1 & 0x80) != (new_value & 0x80)));
     }
 
-    string get_op_str(const char *op, nes_addr_mode addr_mode);
+    string get_op_str(const char *op, nes_addr_mode addr_mode, bool is_official = true);
     void append_operand_str(string &str, nes_addr_mode addr_mode);
 
     // ADC - Add with carry
