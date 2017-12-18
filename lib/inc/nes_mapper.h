@@ -154,7 +154,7 @@ public :
         LOG("[NES_ROM] HEADER: Mapper_ID = " << mapper_id);
         
         int prg_rom_size = header.prg_size * 0x4000;    // 16KB 
-        int chr_rom_size = header.chr_size * 0x2000;    // 4KB
+        int chr_rom_size = header.chr_size * 0x2000;    // 8KB
 
         auto prg_rom = make_shared<vector<uint8_t>>(prg_rom_size);
         auto chr_rom = make_shared<vector<uint8_t>>(chr_rom_size);
