@@ -127,7 +127,7 @@ public :
     static shared_ptr<nes_mapper> load_from(const char *path)
 
     {
-        LOG("[NES_ROM] opening NES ROM file '" << path << "' ...");
+        LOG("[NES_ROM] Opening NES ROM file '" << path << "' ...");
 
         assert(sizeof(ines_header) == 0x10);
 
@@ -141,16 +141,17 @@ public :
 
         if (header.flag6 & FLAG_6_HAS_TRAINER_MASK)
         {
-            LOG("[ROM] Skipping trainer bytes...");
+            LOG("[NES_ROM] HEADER: Trainer bytes 0x200 present.");
+            LOG("[NES_ROM] Skipping trainer bytes...");
 
             // skip the 512-byte trainer
             file.seekg(ios_base::cur, 0x200);
         }
 
-        LOG("[NES_ROM] flags6 = " << ios::hex << header.flag6);
-        LOG("[NES_ROM] flags7 = " << ios::hex << header.flag7);
+        LOG("[NES_ROM] HEADER: Flags6 = 0x" << std::hex << (uint32_t) header.flag6);
+        LOG("[NES_ROM] HEADER: Flags7 = 0x" << std::hex << (uint32_t) header.flag7);
         int mapper_id = (header.flag6 & FLAG_6_LO_MAPPER_NUMBER_MASK) >> 4 + (header.flag7 & FLAG_7_HI_MAPPER_NUMBER_MASK);
-        LOG("[NES_ROM]  Mapper_ID = " << mapper_id);
+        LOG("[NES_ROM] HEADER: Mapper_ID = " << mapper_id);
         
         int prg_rom_size = header.prg_size * 0x4000;    // 16KB 
         int chr_rom_size = header.chr_size * 0x2000;    // 4KB
