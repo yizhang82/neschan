@@ -103,7 +103,7 @@ public :
     {
         // @TODO - Simulate full power-on state
         // http://wiki.nesdev.com/w/index.php/CPU_power_up_state
-        _context.P = 0x24;          // @TODO - Not sure whether 24 or 34 is correct
+        _context.P = 0x24;          // @TODO - Should be 0x34 - but temporarily set to 0x24 to match nintendulator baseline 
         _context.A = _context.X = _context.Y = 0;
         _context.S = 0xfd;
         _context.PC = 0;
@@ -303,12 +303,12 @@ private :
         else if (addr_mode == nes_addr_mode::nes_addr_mode_zp_ind_x)
         {
             // zero page indexed X
-            return decode_byte() + _context.X;
+            return (decode_byte() + _context.X) & 0xff;
         }
         else if (addr_mode == nes_addr_mode::nes_addr_mode_zp_ind_y)
         {
             // zero page indexed Y 
-            return decode_byte() + _context.Y;
+            return (decode_byte() + _context.Y) & 0xff;
         }
         else if (addr_mode == nes_addr_mode::nes_addr_mode_ind)
         {
@@ -349,14 +349,14 @@ private :
         {
             // Indexed Indirect, rarely used
             uint8_t addr = decode_byte();
-            return peek(addr + _context.X) + (((uint16_t) peek(addr + _context.X + 1)) << 8);
+            return peek((addr + _context.X) & 0xff) + (uint16_t(peek((addr + _context.X + 1) & 0xff)) << 8);
         }
         else if (addr_mode == nes_addr_mode::nes_addr_mode_ind_y)
         {
             // Indirect Indexed
             // implies a table of table address in zero page
             uint8_t addr = decode_byte();
-            return peek(addr) + (((uint16_t) peek(addr + 1)) << 8) + _context.Y;
+            return peek(addr) + (uint16_t(peek((addr + 1) & 0xff)) << 8) + _context.Y;
         }
         else
         {

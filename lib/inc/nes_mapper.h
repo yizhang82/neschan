@@ -132,8 +132,9 @@ public :
         assert(sizeof(ines_header) == 0x10);
 
         ifstream file;
+        file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
         file.open(path, std::ifstream::in | std::ifstream::binary);
-
+        
         // Parse header
         ines_header header;
         file.read((char *)&header, sizeof(header));

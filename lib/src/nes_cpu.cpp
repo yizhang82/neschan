@@ -314,12 +314,14 @@ void nes_cpu::append_operand_str(string &str, nes_addr_mode addr_mode)
         if (addr_mode == nes_addr_mode_zp_ind_x)
         {
             str.append(",X @ ");
-            append_byte(str, addr + X());
+            addr += X();
+            append_byte(str, addr);
         }
         else if (addr_mode == nes_addr_mode_zp_ind_y)
         {
-            str.append(", Y @ ");
-            append_byte(str, addr + X());
+            str.append(",Y @ ");
+            addr += Y();
+            append_byte(str, addr);
         }
 
         str.append(" = ");
@@ -339,12 +341,14 @@ void nes_cpu::append_operand_str(string &str, nes_addr_mode addr_mode)
             if (addr_mode == nes_addr_mode_abs_x)
             {
                 str.append(",X @ ");
-                append_word(str, addr + X());
+                addr += X();
+                append_word(str, addr);
             }
             else if (addr_mode == nes_addr_mode_abs_y)
             {
-                str.append(", Y @ ");
-                append_word(str, addr + Y());
+                str.append(",Y @ ");
+                addr += Y();
+                append_word(str, addr);
             }
 
             str.append(" = ");
@@ -390,7 +394,7 @@ void nes_cpu::append_operand_str(string &str, nes_addr_mode addr_mode)
         append_byte(str, addr);
         str.append(",X) @ ");
         append_byte(str, addr + X());
-        uint16_t final_addr = peek(addr + _context.X) + (((uint16_t)peek(addr + _context.X + 1)) << 8);
+        uint16_t final_addr = peek((addr + _context.X) & 0xff) + (uint16_t(peek((addr + _context.X + 1) & 0xff)) << 8);
         str.append(" = ");
         append_word(str, final_addr);
         str.append(" = ");
@@ -403,7 +407,7 @@ void nes_cpu::append_operand_str(string &str, nes_addr_mode addr_mode)
         str.append("($");
         append_byte(str, addr);
         str.append("),Y = ");
-        uint16_t final_addr = peek(addr) + (((uint16_t)peek(addr + 1)) << 8);
+        uint16_t final_addr = peek(addr) + (uint16_t(peek((addr + 1) & 0xff)) << 8);
         append_word(str, final_addr);
         str.append(" @ ");
         final_addr += _context.Y;

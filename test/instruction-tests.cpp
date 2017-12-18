@@ -36,8 +36,7 @@ TEST_CASE("instruction tests") {
     SUBCASE("full instruction test") {
         INIT_TRACE("neschan.instrtest.full.log");
 
-        // Doesn't completely work yet
-        // cpu.run_rom("./roms/nestest.nes");
+        cpu.run_rom("./roms/nestest/nestest.nes");
     }
 
 }
