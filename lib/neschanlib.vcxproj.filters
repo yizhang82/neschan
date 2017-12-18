@@ -20,23 +20,26 @@
     <ClInclude Include="inc\common.h">
       <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="inc\cpu.h">
-      <Filter>inc</Filter>
-    </ClInclude>
-    <ClInclude Include="inc\memory.h">
-      <Filter>inc</Filter>
-    </ClInclude>
     <ClInclude Include="inc\trace.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\nes_memory.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\nes_cpu.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\nes_mapper.h">
       <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\cpu.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="src\memory.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="src\nes_memory.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\nes_cpu.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

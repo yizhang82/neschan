@@ -152,15 +152,16 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="inc\common.h" />
-    <ClInclude Include="inc\cpu.h" />
-    <ClInclude Include="inc\memory.h" />
+    <ClInclude Include="inc\nes_cpu.h" />
+    <ClInclude Include="inc\nes_memory.h" />
     <ClInclude Include="inc\trace.h" />
+    <ClInclude Include="inc\nes_mapper.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\cpu.cpp" />
-    <ClCompile Include="src\memory.cpp" />
+    <ClCompile Include="src\nes_cpu.cpp" />
+    <ClCompile Include="src\nes_memory.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

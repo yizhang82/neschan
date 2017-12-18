@@ -27,6 +27,7 @@ public :
     void init(const char *filename)
     {
         _file_name = filename;
+        _stream->close();
         _stream->open(_file_name);
     }
 
@@ -43,10 +44,21 @@ public :
             _stream->write(str.c_str(), str.size());
     }
 
+    void trace(const char *str)
+    {
+        if (_stream)
+            _stream->write(str, strlen(str));
+    }
+
     static tracer &get()
     {
         static tracer s_trace;
         return s_trace;
+    }
+
+    ofstream &stream()
+    {
+        return *_stream;
     }
 
 private :
@@ -56,11 +68,17 @@ private :
     unique_ptr<ofstream> _stream;
 };
 
+static ostream& operator <<(ostream &os, const string &str)
+{
+    os << str.c_str();
+    return os;
+}
+
 #define INIT_TRACE(filename) tracer::get().init(filename);
 
 // Always on - should only used for non-performance critical scenarios
 // No need to flush - endl automatically flushes  
-#define LOG(expr) tracer::get().trace(expr);
+#define LOG(expr) tracer::get().stream() << expr << endl;
 
 // Optionally enabled in release and always on in debug
 #define TRACE(expr) if (tracer.get().enabled()) { LOG(expr); } 

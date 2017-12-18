@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "cpu.h"
+#include "nes_cpu.h"
 #include "trace.h"
 
 #define IS_ALU_OP_CODE_(op, offset, mode) case nes_op_code::op##_base + offset : LOG(get_op_str(#op, nes_addr_mode::nes_addr_mode_##mode)); op(nes_addr_mode::nes_addr_mode_##mode); break; 
@@ -56,7 +56,6 @@ void nes_cpu::execute()
         IS_OP_CODE_MODE(LDX, 0xb6, zp_ind_y)
         IS_OP_CODE_MODE(LDX, 0xae, abs)
         IS_OP_CODE_MODE(LDX, 0xbe, abs_y)
-
         IS_OP_CODE_MODE(LDY, 0xa0, imm)
         IS_OP_CODE_MODE(LDY, 0xa4, zp)
         IS_OP_CODE_MODE(LDY, 0xb4, zp_ind_x)
@@ -66,10 +65,16 @@ void nes_cpu::execute()
         IS_OP_CODE_MODE(STX, 0x86, zp)
         IS_OP_CODE_MODE(STX, 0x96, zp_ind_y)
         IS_OP_CODE_MODE(STX, 0x8e, abs)
-
         IS_OP_CODE_MODE(STY, 0x84, zp)
         IS_OP_CODE_MODE(STY, 0x94, zp_ind_x)
         IS_OP_CODE_MODE(STY, 0x8c, abs)
+
+        IS_OP_CODE_MODE(CPX, 0xe0, imm)
+        IS_OP_CODE_MODE(CPX, 0xe4, zp)
+        IS_OP_CODE_MODE(CPX, 0xec, abs)
+        IS_OP_CODE_MODE(CPY, 0xc0, imm)
+        IS_OP_CODE_MODE(CPY, 0xc4, zp)
+        IS_OP_CODE_MODE(CPY, 0xcc, abs)
 
         IS_OP_CODE(TAX, 0xaa)
         IS_OP_CODE(TAY, 0xa8)
@@ -99,8 +104,8 @@ void nes_cpu::execute()
         IS_OP_CODE(CLI, 0x58)
         IS_OP_CODE(CLV, 0xB8)
 
-        IS_OP_CODE_MODE(JMP, 0x4c, abs)
-        IS_OP_CODE_MODE(JMP, 0x6c, ind)
+        IS_OP_CODE_MODE(JMP, 0x4c, abs_jmp)
+        IS_OP_CODE_MODE(JMP, 0x6c, ind_jmp)
         
         IS_OP_CODE_MODE(BCC, 0x90, rel)
         IS_OP_CODE_MODE(BCS, 0xb0, rel)
@@ -108,6 +113,7 @@ void nes_cpu::execute()
         IS_OP_CODE_MODE(BMI, 0x30, rel)
         IS_OP_CODE_MODE(BNE, 0xd0, rel)
         IS_OP_CODE_MODE(BPL, 0x10, rel)
+        IS_OP_CODE_MODE(BVC, 0x50, rel)
         IS_OP_CODE_MODE(BVS, 0x70, rel)
 
         IS_OP_CODE_MODE(BIT, 0x24, zp)
@@ -120,7 +126,7 @@ void nes_cpu::execute()
 
         IS_OP_CODE(RTI, 0x40)
         IS_OP_CODE(RTS, 0x60)
-        IS_OP_CODE_MODE(JSR, 0x20, abs)
+        IS_OP_CODE_MODE(JSR, 0x20, abs_jmp)
 
         case 0x02:
         case 0x12:
@@ -142,14 +148,16 @@ void nes_cpu::execute()
         case 0xea:
             LOG(get_op_str("NOP", nes_addr_mode_imp)); 
             NOP(nes_addr_mode_imp);
-            return;
+            break;
 
         case 0x00:
             LOG(get_op_str("NOP", nes_addr_mode_imp)); 
             return;
 
         default:
-            break;
+            LOG("[CPU] Unrecognized instruction or illegal instruction!");
+            assert(false);
+            return;
         }
     }
 }
@@ -199,6 +207,7 @@ string nes_cpu::get_op_str(const char *op, nes_addr_mode addr_mode)
         case nes_addr_mode::nes_addr_mode_acc:
             break;
 
+        case nes_addr_mode::nes_addr_mode_rel: 
         case nes_addr_mode::nes_addr_mode_imm:
         case nes_addr_mode::nes_addr_mode_zp:
         case nes_addr_mode::nes_addr_mode_zp_ind_x:
@@ -209,10 +218,13 @@ string nes_cpu::get_op_str(const char *op, nes_addr_mode addr_mode)
             break;
 
         case nes_addr_mode::nes_addr_mode_ind:
+        case nes_addr_mode::nes_addr_mode_ind_jmp:
         case nes_addr_mode::nes_addr_mode_abs:
+        case nes_addr_mode::nes_addr_mode_abs_jmp:
         case nes_addr_mode::nes_addr_mode_abs_x:
         case nes_addr_mode::nes_addr_mode_abs_y:
             operand_size = 2;
+            break;
 
         default:
             assert(false);
@@ -265,7 +277,6 @@ string nes_cpu::get_op_str(const char *op, nes_addr_mode addr_mode)
 
     msg.append("CYC:");
     msg.append("  0");
-    msg.append("\n");
 
     return msg;
 }
@@ -279,12 +290,18 @@ void nes_cpu::append_operand_str(string &str, nes_addr_mode addr_mode)
         return;
 
     case nes_addr_mode::nes_addr_mode_acc:
-        str.append(" A ");
+        str.append("A");
         break;
 
     case nes_addr_mode::nes_addr_mode_imm:
         str.append("#$");
         append_byte(str, peek(PC()));
+        break;
+
+    case nes_addr_mode::nes_addr_mode_rel:
+        // display the real address directly after accounting for offset
+        str.append("$");
+        append_word(str, int8_t(peek(PC())) + PC() + 1);
         break;
 
     case nes_addr_mode::nes_addr_mode_zp:
@@ -309,6 +326,7 @@ void nes_cpu::append_operand_str(string &str, nes_addr_mode addr_mode)
         append_byte(str, peek(addr));
         break;
     }
+    case nes_addr_mode::nes_addr_mode_abs_jmp:
     case nes_addr_mode::nes_addr_mode_abs:
     case nes_addr_mode::nes_addr_mode_abs_x:
     case nes_addr_mode::nes_addr_mode_abs_y:
@@ -316,19 +334,22 @@ void nes_cpu::append_operand_str(string &str, nes_addr_mode addr_mode)
         str.append("$");
         uint16_t addr = peek_word(PC());
         append_word(str, addr);
-        if (addr_mode == nes_addr_mode_zp_ind_x)
+        if (addr_mode != nes_addr_mode_abs_jmp)
         {
-            str.append(",X @ ");
-            append_word(str, addr + X());
-        }
-        else if (addr_mode == nes_addr_mode_zp_ind_y)
-        {
-            str.append(", Y @ ");
-            append_word(str, addr + Y());
-        }
+            if (addr_mode == nes_addr_mode_abs_x)
+            {
+                str.append(",X @ ");
+                append_word(str, addr + X());
+            }
+            else if (addr_mode == nes_addr_mode_abs_y)
+            {
+                str.append(", Y @ ");
+                append_word(str, addr + Y());
+            }
 
-        str.append(" = ");
-        append_byte(str, peek(addr));
+            str.append(" = ");
+            append_byte(str, peek(addr));
+        }
         break;
     }
     case nes_addr_mode::nes_addr_mode_ind:
@@ -341,11 +362,31 @@ void nes_cpu::append_operand_str(string &str, nes_addr_mode addr_mode)
         append_word(str, peek_word(addr));
         break;
     }
+    case nes_addr_mode::nes_addr_mode_ind_jmp:
+    {
+        uint16_t addr = peek_word(PC());
+        str.append("(");
+        append_word(str, addr);
+        str.append(") = ");
+
+        if (addr & 0xff == 0xff)
+        {
+            // Account for JMP hardware bug
+            // http://wiki.nesdev.com/w/index.php/Errata
+            append_word(str, peek(addr) + uint16_t(peek(addr & 0xff00)) << 8);
+        }
+        else
+        {
+            append_word(str, peek_word(addr));
+        }
+        break;
+    }
+
 
     case nes_addr_mode::nes_addr_mode_ind_x:
     {
-        uint8_t addr = peek(decode_byte());
-        str.append("$(");
+        uint8_t addr = peek(PC());
+        str.append("($");
         append_byte(str, addr);
         str.append(",X) @ ");
         append_byte(str, addr + X());
@@ -381,10 +422,12 @@ void nes_cpu::append_operand_str(string &str, nes_addr_mode addr_mode)
 void nes_cpu::ADC(nes_addr_mode addr_mode)
 {
     uint8_t val = read_operand(decode_operand(addr_mode));
+    uint8_t old_val = A();
     A() = val + A() + get_carry();
 
     // flags
-    determine_overflow_flag(val, A());
+    set_overflow_flag(is_sign_overflow(old_val, val, A()));
+    set_carry_flag(old_val > A());
     calc_alu_flag(A());
 }
 
@@ -394,8 +437,8 @@ void nes_cpu::AND(nes_addr_mode addr_mode)
     uint8_t val = read_operand(decode_operand(addr_mode));
     A() &= val;
 
-    // flags
-    calc_alu_flag(val);
+    // flags    
+    calc_alu_flag(A());
 }
 
 // Compare 
@@ -404,19 +447,11 @@ void nes_cpu::CMP(nes_addr_mode addr_mode)
     uint8_t val = read_operand(decode_operand(addr_mode));
 
     // flags
-    if (A() < val)
-    {
-        set_negative_flag(true);
-    }
-    else if (A() > val)
-    {
-        set_carry_flag(true);
-    }
-    else
-    {
-        set_carry_flag(true);
-        set_zero_flag(true);
-    }
+    uint8_t diff = A() - val;
+
+    set_carry_flag(A() >= val);
+    set_zero_flag(diff == 0);
+    set_negative_flag(diff & 0x80);
 }
 
 // Exclusive OR 
@@ -442,11 +477,14 @@ void nes_cpu::ORA(nes_addr_mode addr_mode)
 void nes_cpu::SBC(nes_addr_mode addr_mode)
 {
     uint8_t val = read_operand(decode_operand(addr_mode));
-    A() = A() - val - (1 - get_carry());
+    val = ~val + 1;                     // turn it into a add operand
+    val = val -(1 - get_carry());       // account for the carry
+    uint8_t old_val = A();
+    A() = A() + val;
 
     // flags
-    set_carry_flag(A() > val);
-    determine_overflow_flag(val, A());
+    set_overflow_flag(is_sign_overflow(old_val, val, A()));
+    set_carry_flag(A() <= old_val);
     calc_alu_flag(A());
 }
 
@@ -489,23 +527,25 @@ void nes_cpu::ASL(nes_addr_mode addr_mode)
 // BCC - Branch if Carry Clear
 void nes_cpu::BCC(nes_addr_mode addr_mode) 
 {
-    if (is_overflow())
-        PC() = PC() + (int8_t) decode_byte();
+    int8_t rel = (int8_t) decode_byte();
+    if (!get_carry())
+        PC() += rel;
 }
-
 
 // BCS - Branch if Carry Set 
 void nes_cpu::BCS(nes_addr_mode addr_mode) 
 {
+    int8_t rel = (int8_t) decode_byte();
     if (get_carry())
-        PC() = PC() + (int8_t) decode_byte();
+        PC() += rel;
 }
 
 // BEQ - Branch if Equal
 void nes_cpu::BEQ(nes_addr_mode addr_mode) 
 {
-    if (is_zero())
-        PC() = PC() + (int8_t) decode_byte();
+    int8_t rel = (int8_t) decode_byte();
+    if (is_zero()) 
+        PC() += rel;
 }
 
 // BIT - Bit test
@@ -522,22 +562,25 @@ void nes_cpu::BIT(nes_addr_mode addr_mode)
 // BMI - Branch if minus
 void nes_cpu::BMI(nes_addr_mode addr_mode) 
 {
+    int8_t rel = (int8_t) decode_byte();
     if (is_negative())
-        PC() = PC() + (int8_t) decode_byte(); 
+        PC() += rel;
 }
 
 // BNE - Branch if not equal
 void nes_cpu::BNE(nes_addr_mode addr_mode) 
 {
+    int8_t rel = (int8_t) decode_byte();
     if (!is_zero())
-        PC() = PC() + (int8_t) decode_byte(); 
+        PC() += rel;
 }
 
 // BPL - Branch if positive 
 void nes_cpu::BPL(nes_addr_mode addr_mode) 
 {
+    int8_t rel = (int8_t) decode_byte();
     if (!is_negative())
-        PC() = PC() + (int8_t) decode_byte(); 
+        PC() += rel;
 }
 
 // BRK - Force interrupt
@@ -546,15 +589,17 @@ void nes_cpu::BRK(nes_addr_mode addr_mode) {}
 // BVC - Branch if overflow clear
 void nes_cpu::BVC(nes_addr_mode addr_mode) 
 {
+    int8_t rel = (int8_t) decode_byte();
     if (!is_overflow())
-        PC() = PC() + (int8_t) decode_byte(); 
+        PC() += rel;
 }
 
 // BVS - Branch if overflow set
 void nes_cpu::BVS(nes_addr_mode addr_mode) 
 {
-    if (!is_overflow())
-        PC() = PC() + (int8_t) decode_byte(); 
+    int8_t rel = (int8_t) decode_byte();
+    if (is_overflow())
+        PC() += rel;
 }
 
 // CLC - Clear carry flag
@@ -570,10 +615,30 @@ void nes_cpu::CLI(nes_addr_mode addr_mode) { set_interrupt_flag(false); }
 void nes_cpu::CLV(nes_addr_mode addr_mode) { set_overflow_flag(false); }
 
 // CPX - Compare X register
-void nes_cpu::CPX(nes_addr_mode addr_mode) {}
+void nes_cpu::CPX(nes_addr_mode addr_mode) 
+{
+    uint8_t val = read_operand(decode_operand(addr_mode));
+
+    // flags
+    uint8_t diff = X() - val;
+
+    set_carry_flag(X() >= val);
+    set_zero_flag(diff == 0);
+    set_negative_flag(diff & 0x80);
+}
 
 // CPY - Compare Y register
-void nes_cpu::CPY(nes_addr_mode addr_mode) {}
+void nes_cpu::CPY(nes_addr_mode addr_mode) 
+{
+    uint8_t val = read_operand(decode_operand(addr_mode));
+
+    // flags
+    uint8_t diff = Y() - val;
+
+    set_carry_flag(Y() >= val);
+    set_zero_flag(diff == 0);
+    set_negative_flag(diff & 0x80);
+}
 
 // DEC - Decrement memory
 void nes_cpu::DEC(nes_addr_mode addr_mode) 
@@ -586,10 +651,18 @@ void nes_cpu::DEC(nes_addr_mode addr_mode)
 }
 
 // DEX - Decrement X register
-void nes_cpu::DEX(nes_addr_mode addr_mode) { X()--; }
+void nes_cpu::DEX(nes_addr_mode addr_mode) 
+{ 
+    X()--; 
+    calc_alu_flag(X());
+}
 
 // DEY - Decrement Y register
-void nes_cpu::DEY(nes_addr_mode addr_mode) { Y()--; }
+void nes_cpu::DEY(nes_addr_mode addr_mode) 
+{ 
+    Y()--; 
+    calc_alu_flag(Y());
+}
 
 // INC - Increment memory
 void nes_cpu::INC(nes_addr_mode addr_mode) 
@@ -677,19 +750,27 @@ void nes_cpu::PHA(nes_addr_mode addr_mode)
 // PHP - Push processor status
 void nes_cpu::PHP(nes_addr_mode addr_mode) 
 {
-    push_byte(P());
+    // http://wiki.nesdev.com/w/index.php/CPU_status_flag_behavior
+    // Set bit 5 and 4 to 1 when copy status into from PHP
+    push_byte(P() | 0x30);
 }
 
 // PLA - Pull accumulator
 void nes_cpu::PLA(nes_addr_mode addr_mode) 
 {
     A() = pop_byte();
+
+    calc_alu_flag(A());
 }
 
 // PLP - Pull processor status
 void nes_cpu::PLP(nes_addr_mode addr_mode) 
 {
-    P() = pop_byte();
+    // http://wiki.nesdev.com/w/index.php/CPU_status_flag_behavior
+    // Bit 5 and 4 are ignored when pulled from stack - which means they are preserved
+    // @TODO - Nintendulator actually always sets bit 5, not sure which one is correct
+    // I'm setting bit 5 to make testing easier
+    P() = (pop_byte() & 0xef) | (P() & 0x10) | 0x20;
 }
 
 // ROL - Rotate left
@@ -697,7 +778,7 @@ void nes_cpu::ROL(nes_addr_mode addr_mode)
 {
     operand op = decode_operand(addr_mode);
     uint8_t val = read_operand(op);
-    uint8_t new_val = (val << 1) & get_carry();
+    uint8_t new_val = (val << 1) | get_carry();
     write_operand(op, new_val);
 
     // flags
@@ -711,7 +792,7 @@ void nes_cpu::ROR(nes_addr_mode addr_mode)
 {
     operand op = decode_operand(addr_mode);
     uint8_t val = read_operand(op);
-    uint8_t new_val = (val >> 1) & (get_carry() << 7);
+    uint8_t new_val = (val >> 1) | (get_carry() << 7);
     write_operand(op, new_val);
 
     // flags
@@ -721,7 +802,13 @@ void nes_cpu::ROR(nes_addr_mode addr_mode)
 }
 
 // RTI - Return from interrupt
-void nes_cpu::RTI(nes_addr_mode addr_mode) {}
+void nes_cpu::RTI(nes_addr_mode addr_mode) 
+{
+    PLP(nes_addr_mode_imp);
+
+    uint16_t addr = pop_word();
+    PC() = addr;
+}
 
 // RTS - Return from subroutine
 void nes_cpu::RTS(nes_addr_mode addr_mode) 

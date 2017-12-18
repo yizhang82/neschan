@@ -5,7 +5,8 @@
 
 #pragma once
 
-#include "memory.h"
+#include "nes_memory.h"
+#include "nes_mapper.h"
 #include <vector>
 
 using namespace std;
@@ -51,8 +52,10 @@ enum nes_addr_mode
     nes_addr_mode_acc,        //          val = A
     nes_addr_mode_imm,        //          val = arg_8
     nes_addr_mode_ind,        //          val = peek16(arg_16)
+    nes_addr_mode_ind_jmp,    //          val = peek16(arg_16), with JMP bug
     nes_addr_mode_rel,        //          val = arg_8, as offset
-    nes_addr_mode_abs,        //          val = arg_16, LSB then MSB                   
+    nes_addr_mode_abs,        //          val = PEEK(arg_16), LSB then MSB                   
+    nes_addr_mode_abs_jmp,    //          val = arg_16, LSB then MSB, direct jump address                  
     nes_addr_mode_zp,         //          val = PEEK(arg_8)
     nes_addr_mode_zp_ind_x,   // d, x     val = PEEK((arg_8 + X) % $FF ), 4 cycles
     nes_addr_mode_zp_ind_y,   // d, y     val = PEEK((arg_8 + Y) % $FF), 4 cycles
@@ -96,28 +99,34 @@ public :
         memset(&_context, 0, sizeof(_context));
     }
 
-    // Set status register P accordingly
-    void compute_processor_status() { /* @NYI */ }
-
-    void load_program(vector<uint8_t> &&program, uint16_t start_addr)
-    {
-        // load at addr 1000 for convenience
-        _mem.set_bytes(start_addr, program.data(), program.size());
-    }
-
     void power_on()
     {
         // @TODO - Simulate full power-on state
-        _context.P = 0x34;
+        // http://wiki.nesdev.com/w/index.php/CPU_power_up_state
+        _context.P = 0x24;          // @TODO - Not sure whether 24 or 34 is correct
         _context.A = _context.X = _context.Y = 0;
         _context.S = 0xfd;
         _context.PC = 0;
     }
 
-    void run(uint16_t addr)
+    void run_program(vector<uint8_t> &&program, uint16_t addr)
     {
         power_on();
+        
+        _mem.set_bytes(addr, program.data(), program.size());
+
         _context.PC = addr;
+        execute();
+    }
+
+    void run_rom(const char *rom_path)
+    {
+        power_on();
+
+        auto mapper = nes_rom_loader::load_from(rom_path);
+        _mem.load_mapper(mapper);
+
+        PC() = mapper->get_code_addr();
         execute();
     }
 
@@ -306,7 +315,22 @@ private :
             // Indirect
             return _mem.get_word(decode_word());
         }
-        else if (addr_mode == nes_addr_mode::nes_addr_mode_abs)
+        else if (addr_mode == nes_addr_mode::nes_addr_mode_ind_jmp)
+        {
+            // Indirect
+            uint16_t addr = decode_word();
+            if (addr & 0xff == 0xff)
+            {
+                // Account for JMP hardware bug
+                // http://wiki.nesdev.com/w/index.php/Errata
+                return peek(addr) + uint16_t(peek(addr & 0xff00)) << 8;
+            }
+            else
+            {
+                return peek_word(addr);
+            }
+        }
+        else if (addr_mode == nes_addr_mode::nes_addr_mode_abs || addr_mode == nes_addr_mode::nes_addr_mode_abs_jmp)
         {
             // Absolute
             return decode_word();
@@ -324,7 +348,7 @@ private :
         else if (addr_mode == nes_addr_mode::nes_addr_mode_ind_x)
         {
             // Indexed Indirect, rarely used
-            uint8_t addr = peek(decode_byte());
+            uint8_t addr = decode_byte();
             return peek(addr + _context.X) + (((uint16_t) peek(addr + _context.X + 1)) << 8);
         }
         else if (addr_mode == nes_addr_mode::nes_addr_mode_ind_y)
@@ -354,10 +378,10 @@ private :
         set_negative_flag(value & 0x80);
     }
 
-    void determine_overflow_flag(uint8_t old_value, uint8_t new_value)
+    bool is_sign_overflow(uint8_t val1, int8_t val2, uint8_t new_value)
     {
-        // sign bit change due to overflow or underflow
-        set_overflow_flag((old_value & 0x80) != (new_value & 0x80));
+        return ((val1 & 0x80) == (val2 & 0x80) &&
+            ((val1 & 0x80) != (new_value & 0x80)));
     }
 
     string get_op_str(const char *op, nes_addr_mode addr_mode);
