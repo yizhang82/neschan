@@ -68,12 +68,12 @@ public :
 
     void redirect_addr(uint16_t &addr)
     {
-        if (addr & 0xE000 == 0)
+        if ((addr & 0xE000) == 0)
         {
             // map 0x0000~0x07ff 4 times until 0x1ffff
             addr &= 0x7ff;
         }
-        else if (addr & 0xE000 == 0x2000)
+        else if ((addr & 0xE000) == 0x2000)
         {
             // map 0x2000~0x2008 every 8 bytes until 0x3ffff
             addr &= 0x2007;

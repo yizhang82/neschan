@@ -38,6 +38,8 @@
 
 void nes_cpu::execute()
 {
+    LOG("[NES_CPU] Starts code at " << PC());
+
     while (true)
     {
         // next op
@@ -137,8 +139,19 @@ void nes_cpu::execute()
         IS_OP_CODE(PLP, 0x28)
 
         IS_OP_CODE(RTI, 0x40)
-        IS_OP_CODE(RTS, 0x60)
         IS_OP_CODE_MODE(JSR, 0x20, abs_jmp)
+
+        case 0x60:
+            // If RTS and SP = 0xfd (empty stack), terminate the loop
+            if (S() == 0xfd)
+            {
+                LOG(get_op_str("RTS", nes_addr_mode_imp)); 
+                LOG("[NES_CPU] RTS when SP = $FD -> terminate");
+                return;
+            }
+            LOG(get_op_str("RTS", nes_addr_mode_imp)); 
+            RTS(nes_addr_mode_imp);
+            break;
 
         case 0x02:
         case 0x12:
@@ -194,6 +207,79 @@ void nes_cpu::execute()
         IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x7a, imp)
         IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0xda, imp)
         IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0xfa, imp)
+
+        IS_UNOFFICIAL_OP_CODE_MODE(SLO, 0x03, ind_x)     
+        IS_UNOFFICIAL_OP_CODE_MODE(SLO, 0x07, zp)
+        IS_UNOFFICIAL_OP_CODE_MODE(ANC, 0x0b, imm)
+        IS_UNOFFICIAL_OP_CODE_MODE(SLO, 0x0f, abs)
+        IS_UNOFFICIAL_OP_CODE_MODE(SLO, 0x13, ind_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(SLO, 0x17, zp_ind_x)
+        IS_UNOFFICIAL_OP_CODE_MODE(SLO, 0x1b, abs_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(SLO, 0x1f, abs_x)
+
+        IS_UNOFFICIAL_OP_CODE_MODE(RLA, 0x23, ind_x)     
+        IS_UNOFFICIAL_OP_CODE_MODE(RLA, 0x27, zp)
+        IS_UNOFFICIAL_OP_CODE_MODE(ANC, 0x2b, imm)
+        IS_UNOFFICIAL_OP_CODE_MODE(RLA, 0x2f, abs)
+        IS_UNOFFICIAL_OP_CODE_MODE(RLA, 0x33, ind_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(RLA, 0x37, zp_ind_x)
+        IS_UNOFFICIAL_OP_CODE_MODE(RLA, 0x3b, abs_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(RLA, 0x3f, abs_x)
+
+        IS_UNOFFICIAL_OP_CODE_MODE(SRE, 0x43, ind_x)     
+        IS_UNOFFICIAL_OP_CODE_MODE(SRE, 0x47, zp)
+        IS_UNOFFICIAL_OP_CODE_MODE(ALR, 0x4b, imm)
+        IS_UNOFFICIAL_OP_CODE_MODE(SRE, 0x4f, abs)
+        IS_UNOFFICIAL_OP_CODE_MODE(SRE, 0x53, ind_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(SRE, 0x57, zp_ind_x)
+        IS_UNOFFICIAL_OP_CODE_MODE(SRE, 0x5b, abs_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(SRE, 0x5f, abs_x)
+
+        IS_UNOFFICIAL_OP_CODE_MODE(RRA, 0x63, ind_x)     
+        IS_UNOFFICIAL_OP_CODE_MODE(RRA, 0x67, zp)
+        IS_UNOFFICIAL_OP_CODE_MODE(ARR, 0x6b, imm)
+        IS_UNOFFICIAL_OP_CODE_MODE(RRA, 0x6f, abs)
+        IS_UNOFFICIAL_OP_CODE_MODE(RRA, 0x73, ind_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(RRA, 0x77, zp_ind_x)
+        IS_UNOFFICIAL_OP_CODE_MODE(RRA, 0x7b, abs_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(RRA, 0x7f, abs_x)
+
+        IS_UNOFFICIAL_OP_CODE_MODE(SAX, 0x83, ind_x)     
+        IS_UNOFFICIAL_OP_CODE_MODE(SAX, 0x87, zp)
+        IS_UNOFFICIAL_OP_CODE_MODE(XAA, 0x8b, imm)
+        IS_UNOFFICIAL_OP_CODE_MODE(SAX, 0x8f, abs)
+        IS_UNOFFICIAL_OP_CODE_MODE(AHX, 0x93, ind_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(SAX, 0x97, zp_ind_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(TAS, 0x9b, abs_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(AHX, 0x9f, abs_y)
+
+        IS_UNOFFICIAL_OP_CODE_MODE(LAX, 0xa3, ind_x)     
+        IS_UNOFFICIAL_OP_CODE_MODE(LAX, 0xa7, zp)
+        IS_UNOFFICIAL_OP_CODE_MODE(LAX, 0xab, imm)
+        IS_UNOFFICIAL_OP_CODE_MODE(LAX, 0xaf, abs)
+        IS_UNOFFICIAL_OP_CODE_MODE(LAX, 0xb3, ind_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(LAX, 0xb7, zp_ind_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(LAS, 0xbb, zp_ind_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(LAX, 0xbf, abs_y)
+
+        IS_UNOFFICIAL_OP_CODE_MODE(DCP, 0xc3, ind_x)     
+        IS_UNOFFICIAL_OP_CODE_MODE(DCP, 0xc7, zp)
+        IS_UNOFFICIAL_OP_CODE_MODE(AXS, 0xcb, imm)
+        IS_UNOFFICIAL_OP_CODE_MODE(DCP, 0xcf, abs)
+        IS_UNOFFICIAL_OP_CODE_MODE(DCP, 0xd3, ind_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(DCP, 0xd7, zp_ind_x)
+        IS_UNOFFICIAL_OP_CODE_MODE(DCP, 0xdb, abs_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(DCP, 0xdf, abs_x)
+
+        IS_UNOFFICIAL_OP_CODE_MODE(ISC, 0xe3, ind_x)     
+        IS_UNOFFICIAL_OP_CODE_MODE(ISC, 0xe7, zp)
+        IS_UNOFFICIAL_OP_CODE_MODE(SBC, 0xeb, imm)
+        IS_UNOFFICIAL_OP_CODE_MODE(ISC, 0xef, abs)
+        IS_UNOFFICIAL_OP_CODE_MODE(ISC, 0xf3, ind_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(ISC, 0xf7, zp_ind_x)
+        IS_UNOFFICIAL_OP_CODE_MODE(ISC, 0xfb, abs_y)
+        IS_UNOFFICIAL_OP_CODE_MODE(ISC, 0xff, abs_x)
+
 
         case 00:
             LOG(get_op_str("BRK", nes_addr_mode::nes_addr_mode_imp));
@@ -426,11 +512,11 @@ void nes_cpu::append_operand_str(string &str, nes_addr_mode addr_mode)
         append_word(str, addr);
         str.append(") = ");
 
-        if (addr & 0xff == 0xff)
+        if ((addr & 0xff) == 0xff)
         {
             // Account for JMP hardware bug
             // http://wiki.nesdev.com/w/index.php/Errata
-            append_word(str, peek(addr) + uint16_t(peek(addr & 0xff00)) << 8);
+            append_word(str, peek(addr) + (uint16_t(peek(addr & 0xff00)) << 8));
         }
         else
         {
@@ -479,6 +565,11 @@ void nes_cpu::append_operand_str(string &str, nes_addr_mode addr_mode)
 void nes_cpu::ADC(nes_addr_mode addr_mode)
 {
     uint8_t val = read_operand(decode_operand(addr_mode));
+    _ADC(val);
+}
+
+void nes_cpu::_ADC(uint8_t val)
+{
     uint8_t old_val = A();
     A() = val + A() + get_carry();
 
@@ -534,6 +625,11 @@ void nes_cpu::ORA(nes_addr_mode addr_mode)
 void nes_cpu::SBC(nes_addr_mode addr_mode)
 {
     uint8_t val = read_operand(decode_operand(addr_mode));
+    _SBC(val);
+}
+
+void nes_cpu::_SBC(uint8_t val)
+{
     val = ~val + 1;                     // turn it into a add operand
     val = val -(1 - get_carry());       // account for the carry
     uint8_t old_val = A();
@@ -794,6 +890,7 @@ void nes_cpu::LSR(nes_addr_mode addr_mode)
 
     // flags
     set_carry_flag(val & 0x1);
+
     // @DOCBUG: 
     // http://obelisk.me.uk/6502/reference.html#ASL incorrectly states ASL detects A == 0
     set_zero_flag(new_val == 0);
@@ -963,3 +1060,132 @@ void nes_cpu::TYA(nes_addr_mode addr_mode)
 void nes_cpu::KIL(nes_addr_mode addr_mode)
 {
 }
+
+//===================================================================================
+// Unofficial OP codes
+//===================================================================================
+
+void nes_cpu::ALR(nes_addr_mode addr_mode) { assert(false); }
+void nes_cpu::ANC(nes_addr_mode addr_mode) { assert(false); }
+void nes_cpu::ARR(nes_addr_mode addr_mode) { assert(false); }
+void nes_cpu::AXS(nes_addr_mode addr_mode) { assert(false); }
+
+// LAX - LDA value then TAX
+void nes_cpu::LAX(nes_addr_mode addr_mode)
+{
+    // LDA + TAX
+    uint8_t val = read_operand(decode_operand(addr_mode));
+    X() = A() = val;
+
+    // flags
+    calc_alu_flag(X());
+}
+
+// SAX - AND A X
+void nes_cpu::SAX(nes_addr_mode addr_mode) 
+{
+    write_operand(decode_operand(addr_mode), A() & X());
+}
+
+// DCP - DEC value then CMP value
+void nes_cpu::DCP(nes_addr_mode addr_mode) 
+{
+    // DEC
+    auto operand = decode_operand(addr_mode);
+    uint8_t val = read_operand(operand);
+    val--;
+    write_operand(operand, val);
+
+    // CMP
+    uint8_t diff = A() - val;
+
+    set_carry_flag(A() >= val);
+    set_zero_flag(diff == 0);
+    set_negative_flag(diff & 0x80);
+}
+
+// ISC - INC value then SBC value 
+void nes_cpu::ISC(nes_addr_mode addr_mode) 
+{
+    // INC
+    auto operand = decode_operand(addr_mode);
+    uint8_t val = read_operand(operand);
+    val++;
+    write_operand(operand, val);
+
+    // SBC
+    _SBC(val);
+}
+
+// RLA - ROL value then AND value
+void nes_cpu::RLA(nes_addr_mode addr_mode) 
+{
+    // ROL
+    operand op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);
+    uint8_t new_val = (val << 1) | get_carry();
+    write_operand(op, new_val);
+
+    set_carry_flag(val & 0x80);
+
+    // AND
+    A() &= new_val;
+
+    // flags    
+    calc_alu_flag(A());
+}
+
+void nes_cpu::RRA(nes_addr_mode addr_mode) 
+{ 
+    // ROR
+    operand op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);
+    uint8_t new_val = (val >> 1) | (get_carry() << 7);
+    write_operand(op, new_val);
+
+    set_carry_flag(val & 0x1);
+
+    // ADC
+    _ADC(new_val);
+}
+
+// SLO - ASL value then ORA value
+void nes_cpu::SLO(nes_addr_mode addr_mode) 
+{ 
+    // ASL
+    operand op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);
+    uint8_t new_val = val << 1;
+    write_operand(op, new_val);
+
+    set_carry_flag(val & 0x80);
+
+    // ORA
+    A() |= new_val;
+
+    calc_alu_flag(A());
+}
+
+// SRE - LSR value then EOR value
+void nes_cpu::SRE(nes_addr_mode addr_mode) 
+{
+    // LSR
+    operand op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);
+    uint8_t new_val = (val >> 1);
+    write_operand(op, new_val);
+
+    // flags
+    set_carry_flag(val & 0x1);
+
+    // EOR
+    A() ^= new_val;
+
+    // flags
+    calc_alu_flag(A());
+}
+
+void nes_cpu::XAA(nes_addr_mode addr_mode) { assert(false); }
+void nes_cpu::AHX(nes_addr_mode addr_mode) { assert(false); }
+void nes_cpu::TAS(nes_addr_mode addr_mode) { assert(false); }
+void nes_cpu::LAS(nes_addr_mode addr_mode) { assert(false); }

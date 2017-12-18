@@ -278,7 +278,7 @@ private :
         }
     }
 
-    void write_operand(operand &op, int8_t value)
+    void write_operand(operand op, int8_t value)
     {
         switch (op.kind)
         {
@@ -319,11 +319,11 @@ private :
         {
             // Indirect
             uint16_t addr = decode_word();
-            if (addr & 0xff == 0xff)
+            if ((addr & 0xff) == 0xff)
             {
                 // Account for JMP hardware bug
                 // http://wiki.nesdev.com/w/index.php/Errata
-                return peek(addr) + uint16_t(peek(addr & 0xff00)) << 8;
+                return peek(addr) + (uint16_t(peek(addr & 0xff00)) << 8);
             }
             else
             {
@@ -389,6 +389,7 @@ private :
 
     // ADC - Add with carry
     void ADC(nes_addr_mode addr_mode);
+    void _ADC(uint8_t val);
 
     // AND - Logical AND
     void AND(nes_addr_mode addr_mode);
@@ -518,6 +519,7 @@ private :
 
     // SBC - Subtract with carry
     void SBC(nes_addr_mode addr_mode);
+    void _SBC(uint8_t val);
 
     // SEC - Set carry flag
     void SEC(nes_addr_mode addr_mode);
@@ -557,6 +559,28 @@ private :
 
     // KIL - Kill?
     void KIL(nes_addr_mode addr_mode);
+
+    //===================================================================================
+    // Unofficial OP codes
+    //===================================================================================
+
+    void ALR(nes_addr_mode addr_mode);
+    void ANC(nes_addr_mode addr_mode);
+    void ARR(nes_addr_mode addr_mode);
+    void AXS(nes_addr_mode addr_mode);
+    void LAX(nes_addr_mode addr_mode);
+    void SAX(nes_addr_mode addr_mode);
+    void DCP(nes_addr_mode addr_mode);
+    void ISC(nes_addr_mode addr_mode);
+    void RLA(nes_addr_mode addr_mode);
+    void RRA(nes_addr_mode addr_mode);
+    void SLO(nes_addr_mode addr_mode);
+    void SRE(nes_addr_mode addr_mode);
+    
+    void XAA(nes_addr_mode addr_mode);
+    void AHX(nes_addr_mode addr_mode);
+    void TAS(nes_addr_mode addr_mode);
+    void LAS(nes_addr_mode addr_mode);
 
 private :
     nes_memory      &_mem;

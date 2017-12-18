@@ -150,7 +150,7 @@ public :
 
         LOG("[NES_ROM] HEADER: Flags6 = 0x" << std::hex << (uint32_t) header.flag6);
         LOG("[NES_ROM] HEADER: Flags7 = 0x" << std::hex << (uint32_t) header.flag7);
-        int mapper_id = (header.flag6 & FLAG_6_LO_MAPPER_NUMBER_MASK) >> 4 + (header.flag7 & FLAG_7_HI_MAPPER_NUMBER_MASK);
+        int mapper_id = ((header.flag6 & FLAG_6_LO_MAPPER_NUMBER_MASK) >> 4) + ((header.flag7 & FLAG_7_HI_MAPPER_NUMBER_MASK));
         LOG("[NES_ROM] HEADER: Mapper_ID = " << mapper_id);
         
         int prg_rom_size = header.prg_size * 0x4000;    // 16KB 

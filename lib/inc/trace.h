@@ -33,6 +33,7 @@ public :
 
     ~tracer()
     {
+        _stream->flush();
         _stream->close();
     }
 

@@ -37,6 +37,14 @@ TEST_CASE("instruction tests") {
         INIT_TRACE("neschan.instrtest.full.log");
 
         cpu.run_rom("./roms/nestest/nestest.nes");
+        
+        // Check we've proceeded to the end of the ROM
+        CHECK(cpu.PC() == 0xc66f);
+        CHECK(cpu.S() == 0xfd);
+
+        // Check the test is successful
+        CHECK(cpu.peek(0x2) == 0);
+        CHECK(cpu.peek(0x3) == 0);
     }
 
 }
