@@ -26,7 +26,7 @@ TEST_CASE("instruction tests") {
                 0xe6, 0x21,     // INC (0x21)
                 0xa4, 0x21,     // LDY (0x21)
                 0xc8,           // INY
-                0x00
+                0x60,           // RTS
             },
             0x1000);
 

@@ -30,6 +30,7 @@ public :
     // Stop the emulation engine and exit the main loop
     void stop() { _stop_requested = true; }
 
+    bool stop_requested() { return _stop_requested; }
     void run_program(vector<uint8_t> &&program, uint16_t addr);
 
     void run_rom(const char *rom_path);

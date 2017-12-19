@@ -176,7 +176,8 @@ public :
     }
 
 private :
-    void execute();
+    // execute on instruction, update processor status as needed, and move CPU internal cycle count
+    void exec_one_instruction();
 
     uint8_t decode_byte()
     {

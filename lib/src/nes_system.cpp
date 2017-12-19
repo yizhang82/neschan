@@ -23,6 +23,8 @@ nes_system::~nes_system() {}
 
 void nes_system::power_on()
 {
+    _stop_requested = false;
+
     for (auto comp : _components)
         comp->power_on(this);
 }

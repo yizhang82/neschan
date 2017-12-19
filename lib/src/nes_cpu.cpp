@@ -22,12 +22,11 @@ void nes_cpu::reset()
 
 }
 
-void nes_cpu::step_to(nes_cycle_t count)
+void nes_cpu::step_to(nes_cycle_t new_count)
 {
-    // @TODO - Implement correct cycle count
-    execute();
-
-    _system->stop();
+    // we are asked to proceed to new_count - keep executing one instruction
+    while (_cycle < new_count && !_system->stop_requested())
+        exec_one_instruction();    
 }
 
 #define IS_ALU_OP_CODE_(op, offset, mode) case nes_op_code::op##_base + offset : LOG(get_op_str(#op, nes_addr_mode::nes_addr_mode_##mode)); op(nes_addr_mode::nes_addr_mode_##mode); break; 
@@ -64,11 +63,9 @@ void nes_cpu::step_to(nes_cycle_t count)
 #define IS_UNOFFICIAL_OP_CODE(op, opcode) case opcode : LOG(get_op_str(#op, nes_addr_mode_imp, false)); op(nes_addr_mode_imp); break;
 #define IS_UNOFFICIAL_OP_CODE_MODE(op, opcode, mode) case opcode : LOG(get_op_str(#op, nes_addr_mode_##mode, false)); op(nes_addr_mode_##mode); break;
 
-void nes_cpu::execute()
+void nes_cpu::exec_one_instruction()
 {
-    LOG("[NES_CPU] Starts code at " << PC());
-
-    while (true)
+    // while (true)
     {
         // next op
         auto op_code = (nes_op_code)decode_byte();
@@ -169,38 +166,29 @@ void nes_cpu::execute()
         IS_OP_CODE(RTI, 0x40)
         IS_OP_CODE_MODE(JSR, 0x20, abs_jmp)
 
-        case 0x60:
-            // If RTS and SP = 0xfd (empty stack), terminate the loop
-            if (S() == 0xfd)
-            {
-                LOG(get_op_str("RTS", nes_addr_mode_imp)); 
-                LOG("[NES_CPU] RTS when SP = $FD -> terminate");
-                return;
-            }
-            LOG(get_op_str("RTS", nes_addr_mode_imp)); 
-            RTS(nes_addr_mode_imp);
-            break;
+        IS_OP_CODE(RTS, 0x60)
 
-        case 0x02:
-        case 0x12:
-        case 0x22:
-        case 0x32:
-        case 0x42:
-        case 0x52:
-        case 0x62:
-        case 0x72:
-        case 0x92:
-        case 0xB2:
-        case 0xd2:
-        case 0xf2:
-            LOG(get_op_str("KIL", nes_addr_mode_imp)); 
-            KIL(nes_addr_mode_imp);
-            return;
+        IS_OP_CODE(KIL, 0x02)
+        IS_OP_CODE(KIL, 0x12)
+        IS_OP_CODE(KIL, 0x22)
+        IS_OP_CODE(KIL, 0x32)
+        IS_OP_CODE(KIL, 0x42)
+        IS_OP_CODE(KIL, 0x52)
+        IS_OP_CODE(KIL, 0x62)
+        IS_OP_CODE(KIL, 0x72)
+        IS_OP_CODE(KIL, 0x92)
+        IS_OP_CODE(KIL, 0xB2)
+        IS_OP_CODE(KIL, 0xd2)
+        IS_OP_CODE(KIL, 0xf2)
+
+        IS_OP_CODE(BRK, 0x00)
 
         // The real NOP
         IS_OP_CODE_MODE(NOP, 0xea, imp)
 
-        // All the other "NOP"
+        //===============================================================================
+        // Unofficial instructions
+        //===============================================================================
         IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x80, imm)
 
         IS_UNOFFICIAL_OP_CODE_MODE(NOP, 0x04, zp)
@@ -308,15 +296,10 @@ void nes_cpu::execute()
         IS_UNOFFICIAL_OP_CODE_MODE(ISC, 0xfb, abs_y)
         IS_UNOFFICIAL_OP_CODE_MODE(ISC, 0xff, abs_x)
 
-
-        case 00:
-            LOG(get_op_str("BRK", nes_addr_mode::nes_addr_mode_imp));
-            return;
-
         default:
             LOG("[CPU] Unrecognized instruction or illegal instruction!");
             assert(false);
-            return;
+            break;
         }
     }
 }
@@ -875,6 +858,8 @@ void nes_cpu::BRK(nes_addr_mode addr_mode)
 {
     // cycle count
     step_cpu(7);
+
+    _system->stop();
 }
 
 // BVC - Branch if overflow clear
@@ -1188,6 +1173,14 @@ void nes_cpu::RTI(nes_addr_mode addr_mode)
 // RTS - Return from subroutine
 void nes_cpu::RTS(nes_addr_mode addr_mode) 
 {
+    // If RTS and SP = 0xfd (empty stack), terminate the loop
+    if (S() == 0xfd)
+    {
+        LOG("[NES_CPU] RTS when SP = $FD -> terminate");
+        _system->stop();
+        return;
+    }
+
     // See JSR - we pushed actual return address - 1
     uint16_t addr = pop_word() + 1;
     PC() = addr;
@@ -1310,6 +1303,7 @@ void nes_cpu::TYA(nes_addr_mode addr_mode)
 // KIL - Kill?
 void nes_cpu::KIL(nes_addr_mode addr_mode)
 {
+    _system->stop();
 }
 
 //===================================================================================
