@@ -533,7 +533,7 @@ void nes_cpu::append_operand_str(string &str, nes_addr_mode addr_mode)
     case nes_addr_mode::nes_addr_mode_ind_jmp:
     {
         uint16_t addr = peek_word(PC());
-        str.append("(");
+        str.append("($");
         append_word(str, addr);
         str.append(") = ");
 
@@ -627,8 +627,11 @@ nes_cpu_cycle_t nes_cpu::get_branch_cycle(bool cond, uint16_t new_addr, int8_t r
         // if branch succeeds ++
         cycle++;
 
-        // if crossing to a new page +2
-        if (((new_addr) & 0xff00) != ((new_addr - rel) & 0xff00)) cycle += 2;
+        // if crossing to a new page ++
+        // @DOCBUG 
+        // http://obelisk.me.uk/6502/reference.html#BEQ says +2
+        // http://nesdev.com/6502_cpu.txt says +1 and so does nintendulator
+        if (((new_addr) & 0xff00) != ((new_addr - rel) & 0xff00)) cycle += 1;
     }
 
     return nes_cpu_cycle_t(cycle);

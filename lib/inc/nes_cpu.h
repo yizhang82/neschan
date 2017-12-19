@@ -236,7 +236,9 @@ private :
         }
         else
         {
-            return { decode_operand_addr(addr_mode), operand_kind_addr, false };
+            bool page_crossing;
+            uint16_t addr = decode_operand_addr(addr_mode, &page_crossing);
+            return { addr, operand_kind_addr, page_crossing };
         }
     }
 
@@ -272,8 +274,10 @@ private :
         }
     }
 
-    uint16_t decode_operand_addr(nes_addr_mode addr_mode)
+    uint16_t decode_operand_addr(nes_addr_mode addr_mode, bool *page_crossing = nullptr)
     {
+        if (page_crossing)
+            *page_crossing = false;
         if (addr_mode == nes_addr_mode::nes_addr_mode_zp)
         {
             // zero page - next byte is 8-bit address
@@ -312,12 +316,20 @@ private :
         else if (addr_mode == nes_addr_mode::nes_addr_mode_abs_x)
         {
             // Absolute X
-            return decode_word() + _context.X;
+            uint16_t addr = decode_word();
+            uint16_t new_addr = addr + _context.X;
+            if (page_crossing)
+                *page_crossing = ((addr & 0xff00) != (new_addr & 0xff00));
+            return new_addr;
         }
         else if (addr_mode == nes_addr_mode::nes_addr_mode_abs_y)
         {
             // Absolute Y
-            return decode_word() + _context.Y;
+            uint16_t addr = decode_word();
+            uint16_t new_addr = addr + _context.Y;
+            if (page_crossing)
+                *page_crossing = ((addr & 0xff00) != (new_addr & 0xff00));
+            return new_addr;
         }
         else if (addr_mode == nes_addr_mode::nes_addr_mode_ind_x)
         {
@@ -329,8 +341,12 @@ private :
         {
             // Indirect Indexed
             // implies a table of table address in zero page
-            uint8_t addr = decode_byte();
-            return peek(addr) + (uint16_t(peek((addr + 1) & 0xff)) << 8) + _context.Y;
+            uint8_t arg_addr = decode_byte();
+            uint16_t addr = peek(arg_addr) + (uint16_t(peek((arg_addr + 1) & 0xff)) << 8);
+            uint16_t new_addr = addr + _context.Y;
+            if (page_crossing)
+                *page_crossing = ((addr & 0xff00) != (new_addr & 0xff00));
+            return new_addr;
         }
         else
         {
