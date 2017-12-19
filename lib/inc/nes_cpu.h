@@ -52,7 +52,6 @@ enum nes_addr_mode
     nes_addr_mode_imp,        // implicit
     nes_addr_mode_acc,        //          val = A
     nes_addr_mode_imm,        //          val = arg_8
-    nes_addr_mode_ind,        //          val = peek16(arg_16)
     nes_addr_mode_ind_jmp,    //          val = peek16(arg_16), with JMP bug
     nes_addr_mode_rel,        //          val = arg_8, as offset
     nes_addr_mode_abs,        //          val = PEEK(arg_16), LSB then MSB                   
@@ -89,7 +88,6 @@ enum nes_op_code
     CMP_base = 0xC0,
     SBC_base = 0xE0,
 };
-
 
 class nes_cpu : public nes_component
 {
@@ -200,51 +198,53 @@ private :
             _context.P &= ~mask;
     }
 
-    void cycle(uint8_t count)
-    {
-        // @TODO - we may need to step until the next event
-        _cycle += count;
-    }
-
 private :
-    enum operand_kind : uint16_t
+    enum operand_kind : uint8_t
     {
-        operand_kind_a,
+        operand_kind_acc,
         operand_kind_imm,
         operand_kind_addr
     };
 
-    struct operand
+    struct operand_t
     {
         uint16_t addr_or_value;
         operand_kind kind;
+        bool is_page_crossing : 1;
     };
+
+    void step_cpu(nes_cpu_cycle_t cycle);
+    void step_cpu(int64_t cycle);
+
+    nes_cpu_cycle_t get_cpu_cycle(operand_t operand, nes_addr_mode mode);
+    nes_cpu_cycle_t get_branch_cycle(bool cond, uint16_t new_addr, int8_t rel);
+    nes_cpu_cycle_t get_shift_cycle(nes_addr_mode addr_mode);
 
     //
     // Implements all address mode
     //
-    operand decode_operand(nes_addr_mode addr_mode)
+    operand_t decode_operand(nes_addr_mode addr_mode)
     {    
         if (addr_mode == nes_addr_mode::nes_addr_mode_acc)
         {
-            return { 0, operand_kind_a };
+            return { 0, operand_kind_acc, false };
         }
         else if (addr_mode == nes_addr_mode::nes_addr_mode_imm)
         {
             // immediate - next byte is a constant
-            return { decode_byte(), operand_kind_imm };
+            return { decode_byte(), operand_kind_imm, false };
         }
         else
         {
-            return { decode_operand_addr(addr_mode), operand_kind_addr };
+            return { decode_operand_addr(addr_mode), operand_kind_addr, false };
         }
     }
 
-    uint8_t read_operand(operand op)
+    uint8_t read_operand(operand_t op)
     {
         switch (op.kind)
         {
-        case operand_kind_a:
+        case operand_kind_acc:
             return A();
         case operand_kind_imm:
             // constants are always 8-bit
@@ -257,11 +257,11 @@ private :
         }
     }
 
-    void write_operand(operand op, int8_t value)
+    void write_operand(operand_t op, int8_t value)
     {
         switch (op.kind)
         {
-        case operand_kind_a:
+        case operand_kind_acc:
             A() = value;
             break;
         case operand_kind_addr:
@@ -288,11 +288,6 @@ private :
         {
             // zero page indexed Y 
             return (decode_byte() + _context.Y) & 0xff;
-        }
-        else if (addr_mode == nes_addr_mode::nes_addr_mode_ind)
-        {
-            // Indirect
-            return _mem->get_word(decode_word());
         }
         else if (addr_mode == nes_addr_mode::nes_addr_mode_ind_jmp)
         {
@@ -365,6 +360,8 @@ private :
 
     string get_op_str(const char *op, nes_addr_mode addr_mode, bool is_official = true);
     void append_operand_str(string &str, nes_addr_mode addr_mode);
+
+    void branch(bool cond, nes_addr_mode addr_mode);
 
     // ADC - Add with carry
     void ADC(nes_addr_mode addr_mode);
@@ -483,6 +480,7 @@ private :
 
     // PLP - Pull processor status
     void PLP(nes_addr_mode addr_mode);
+    void _PLP();
 
     // ROL - Rotate left
     void ROL(nes_addr_mode addr_mode);
@@ -565,6 +563,6 @@ private :
     nes_system      *_system;
     nes_memory      *_mem;
     nes_cpu_context _context;
-    uint32_t        _cycle;
+    nes_cycle_t     _cycle;
 };
 

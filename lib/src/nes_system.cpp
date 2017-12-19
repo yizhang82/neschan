@@ -56,9 +56,10 @@ void nes_system::run_rom(const char *rom_path)
 
 void nes_system::main_loop()
 {
+    auto tick = nes_cycle_t(1);
     while (!_stop_requested)
     {
-        step(1);
+        step(tick);
 
         // @TODO - add proper time synchronization/delay
     }

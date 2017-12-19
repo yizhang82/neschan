@@ -7,6 +7,7 @@ void nes_cpu::power_on(nes_system *system)
 {
     _system = system;
     _mem = system->ram();
+    _cycle = nes_cycle_t(0);
 
     // @TODO - Simulate full power-on state
     // http://wiki.nesdev.com/w/index.php/CPU_power_up_state
@@ -375,7 +376,6 @@ string nes_cpu::get_op_str(const char *op, nes_addr_mode addr_mode, bool is_offi
             operand_size = 1;
             break;
 
-        case nes_addr_mode::nes_addr_mode_ind:
         case nes_addr_mode::nes_addr_mode_ind_jmp:
         case nes_addr_mode::nes_addr_mode_abs:
         case nes_addr_mode::nes_addr_mode_abs_jmp:
@@ -442,7 +442,15 @@ string nes_cpu::get_op_str(const char *op, nes_addr_mode addr_mode, bool is_offi
     append_space(msg);
 
     msg.append("CYC:");
-    msg.append("  0");
+
+    nes_cycle_t cycle_count_in_scanline = _cycle % PPU_SCANLINE_CYCLE;
+    int64_t cycle_count = cycle_count_in_scanline.count();
+
+    string cycle_str = std::to_string(cycle_count);
+    int cycle_space = 3 - cycle_str.size();
+    if (cycle_space > 0)
+        msg.append(cycle_space, ' ');
+    msg.append(cycle_str);
 
     return msg;
 }
@@ -522,16 +530,6 @@ void nes_cpu::append_operand_str(string &str, nes_addr_mode addr_mode)
         }
         break;
     }
-    case nes_addr_mode::nes_addr_mode_ind:
-    {
-        uint16_t addr = peek_word(PC());
-        str.append("(");
-        append_word(str, addr);
-        str.append(") = ");
-
-        append_word(str, peek_word(addr));
-        break;
-    }
     case nes_addr_mode::nes_addr_mode_ind_jmp:
     {
         uint16_t addr = peek_word(PC());
@@ -588,11 +586,91 @@ void nes_cpu::append_operand_str(string &str, nes_addr_mode addr_mode)
     }
 }
 
+nes_cpu_cycle_t nes_cpu::get_cpu_cycle(operand_t operand, nes_addr_mode mode)
+{
+    switch (mode)
+    {
+    case nes_addr_mode_acc:
+    case nes_addr_mode_imm:
+        return nes_cpu_cycle_t(2);
+
+    case nes_addr_mode_zp:
+        return nes_cpu_cycle_t(3);
+
+    case nes_addr_mode_zp_ind_x:
+    case nes_addr_mode_zp_ind_y:
+    case nes_addr_mode_abs:
+        return nes_cpu_cycle_t(4);
+
+    case nes_addr_mode_abs_x:
+    case nes_addr_mode_abs_y:
+        return nes_cpu_cycle_t(operand.is_page_crossing ? 5 : 4);
+
+    case nes_addr_mode_ind_x:
+        return nes_cpu_cycle_t(6);
+        
+    case nes_addr_mode_ind_y:
+        return nes_cpu_cycle_t(operand.is_page_crossing ? 6 : 5);
+
+    default:
+        assert(false);
+        return nes_cpu_cycle_t(0);
+    }
+}
+
+nes_cpu_cycle_t nes_cpu::get_branch_cycle(bool cond, uint16_t new_addr, int8_t rel)
+{
+    int cycle = 2;
+
+    if (cond)
+    {
+        // if branch succeeds ++
+        cycle++;
+
+        // if crossing to a new page +2
+        if (((new_addr) & 0xff00) != ((new_addr - rel) & 0xff00)) cycle += 2;
+    }
+
+    return nes_cpu_cycle_t(cycle);
+}
+
+#define BEGIN_CYCLE() { nes_cpu_cycle_t __cycle_count(0);
+#define IS_CYCLE(mode, cycle) if (addr_mode == nes_addr_mode_##mode) __cycle_count = nes_cpu_cycle_t(cycle);
+#define END_CYCLE() step_cpu(__cycle_count); }
+#define END_CYCLE_RETURN() return __cycle_count; }
+
+nes_cpu_cycle_t nes_cpu::get_shift_cycle(nes_addr_mode addr_mode)
+{
+    BEGIN_CYCLE()
+    {
+        IS_CYCLE(acc, 2);
+        IS_CYCLE(zp, 5);
+        IS_CYCLE(zp_ind_x, 6);
+        IS_CYCLE(abs, 6);
+        IS_CYCLE(abs_x, 7);
+    }
+    END_CYCLE_RETURN()
+}
+
+void nes_cpu::step_cpu(int64_t cpu_cycle)
+{
+    _cycle += nes_cpu_cycle_t(cpu_cycle);
+}
+
+void nes_cpu::step_cpu(nes_cpu_cycle_t cpu_cycle)
+{
+    _cycle += cpu_cycle;
+}
+
 // Add with carry
 void nes_cpu::ADC(nes_addr_mode addr_mode)
 {
-    uint8_t val = read_operand(decode_operand(addr_mode));
+    operand_t op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);
     _ADC(val);
+
+    // cycle count
+    step_cpu(get_cpu_cycle(op, addr_mode));
 }
 
 void nes_cpu::_ADC(uint8_t val)
@@ -609,17 +687,22 @@ void nes_cpu::_ADC(uint8_t val)
 // Logical AND
 void nes_cpu::AND(nes_addr_mode addr_mode)
 {
-    uint8_t val = read_operand(decode_operand(addr_mode));
+    operand_t op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);
     A() &= val;
 
     // flags    
     calc_alu_flag(A());
+    
+    // cycle count
+    step_cpu(get_cpu_cycle(op, addr_mode));
 }
 
 // Compare 
 void nes_cpu::CMP(nes_addr_mode addr_mode)
 {
-    uint8_t val = read_operand(decode_operand(addr_mode));
+    operand_t op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);;
 
     // flags
     uint8_t diff = A() - val;
@@ -627,32 +710,50 @@ void nes_cpu::CMP(nes_addr_mode addr_mode)
     set_carry_flag(A() >= val);
     set_zero_flag(diff == 0);
     set_negative_flag(diff & 0x80);
+
+    // cycle count
+    step_cpu(get_cpu_cycle(op, addr_mode));
 }
 
 // Exclusive OR 
 void nes_cpu::EOR(nes_addr_mode addr_mode)
 {
-    uint8_t val = read_operand(decode_operand(addr_mode));
+    operand_t op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);
+
     A() ^= val;
 
     // flags
     calc_alu_flag(A());
+
+    // cycle count
+    step_cpu(get_cpu_cycle(op, addr_mode));
 }
 
 // Logical Inclusive OR
 void nes_cpu::ORA(nes_addr_mode addr_mode)
 {
-    uint8_t val = read_operand(decode_operand(addr_mode));
+    operand_t op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);
+
     A() |= val;
 
     calc_alu_flag(A());
+
+    // cycle count
+    step_cpu(get_cpu_cycle(op, addr_mode));
 }
 
 // Subtract with carry
 void nes_cpu::SBC(nes_addr_mode addr_mode)
 {
-    uint8_t val = read_operand(decode_operand(addr_mode));
+    operand_t op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);
+
     _SBC(val);
+
+    // cycle count
+    step_cpu(get_cpu_cycle(op, addr_mode));
 }
 
 void nes_cpu::_SBC(uint8_t val)
@@ -671,29 +772,22 @@ void nes_cpu::_SBC(uint8_t val)
 // Load Accumulator
 void nes_cpu::LDA(nes_addr_mode addr_mode)
 {
-    uint8_t val = read_operand(decode_operand(addr_mode));
+    operand_t op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);
+
     A() = val;
 
     // flags
     calc_alu_flag(A());
-}
 
-// Store Accumulator  
-void nes_cpu::STA(nes_addr_mode addr_mode)
-{
-    // STA imm (0x89) = NOP
-    if (addr_mode == nes_addr_mode::nes_addr_mode_imm)
-        return;
-
-    poke(decode_operand_addr(addr_mode), A());
-
-    // Doesn't impact any flags
+    // cycle count
+    step_cpu(get_cpu_cycle(op, addr_mode));
 }
 
 // ASL - Arithmetic shift left
 void nes_cpu::ASL(nes_addr_mode addr_mode) 
 {
-    operand op = decode_operand(addr_mode);
+    operand_t op = decode_operand(addr_mode);
     uint8_t val = read_operand(op);
     uint8_t new_val = val << 1;
     write_operand(op, new_val);
@@ -705,102 +799,110 @@ void nes_cpu::ASL(nes_addr_mode addr_mode)
     // http://obelisk.me.uk/6502/reference.html#ASL incorrectly states ASL detects A == 0
     set_zero_flag(new_val == 0); 
     set_negative_flag(new_val & 0x80);
+
+    // cycle count
+    step_cpu(get_shift_cycle(addr_mode));
+}
+
+void nes_cpu::branch(bool cond, nes_addr_mode addr_mode)
+{
+    assert(addr_mode == nes_addr_mode_rel);
+    int8_t rel = (int8_t) decode_byte();
+    if (cond)
+        PC() += rel;
+
+    // cycle count
+    step_cpu(get_branch_cycle(cond, PC(), rel));
 }
 
 // BCC - Branch if Carry Clear
 void nes_cpu::BCC(nes_addr_mode addr_mode) 
 {
-    int8_t rel = (int8_t) decode_byte();
-    if (!get_carry())
-        PC() += rel;
+    branch(!get_carry(), addr_mode);
 }
 
 // BCS - Branch if Carry Set 
 void nes_cpu::BCS(nes_addr_mode addr_mode) 
 {
-    int8_t rel = (int8_t) decode_byte();
-    if (get_carry())
-        PC() += rel;
+    branch(get_carry(), addr_mode);
 }
 
 // BEQ - Branch if Equal
 void nes_cpu::BEQ(nes_addr_mode addr_mode) 
 {
-    int8_t rel = (int8_t) decode_byte();
-    if (is_zero()) 
-        PC() += rel;
+    branch(is_zero(), addr_mode);
 }
 
 // BIT - Bit test
 void nes_cpu::BIT(nes_addr_mode addr_mode) 
 {
-    uint8_t val = read_operand(decode_operand(addr_mode));
+    operand_t op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);
     uint8_t new_val = val & A();
 
+    // flags
     set_zero_flag(new_val == 0);
     set_overflow_flag(val & 0x40);
     set_negative_flag(val & 0x80);
+
+    // cycle count
+    step_cpu(get_cpu_cycle(op, addr_mode));
 }
 
 // BMI - Branch if minus
 void nes_cpu::BMI(nes_addr_mode addr_mode) 
 {
-    int8_t rel = (int8_t) decode_byte();
-    if (is_negative())
-        PC() += rel;
+    branch(is_negative(), addr_mode);
 }
 
 // BNE - Branch if not equal
 void nes_cpu::BNE(nes_addr_mode addr_mode) 
 {
-    int8_t rel = (int8_t) decode_byte();
-    if (!is_zero())
-        PC() += rel;
+    branch(!is_zero(), addr_mode);
 }
 
 // BPL - Branch if positive 
 void nes_cpu::BPL(nes_addr_mode addr_mode) 
 {
-    int8_t rel = (int8_t) decode_byte();
-    if (!is_negative())
-        PC() += rel;
+    branch(!is_negative(), addr_mode);
 }
 
 // BRK - Force interrupt
-void nes_cpu::BRK(nes_addr_mode addr_mode) {}
+void nes_cpu::BRK(nes_addr_mode addr_mode) 
+{
+    // cycle count
+    step_cpu(7);
+}
 
 // BVC - Branch if overflow clear
 void nes_cpu::BVC(nes_addr_mode addr_mode) 
 {
-    int8_t rel = (int8_t) decode_byte();
-    if (!is_overflow())
-        PC() += rel;
+    branch(!is_overflow(), addr_mode);
 }
 
 // BVS - Branch if overflow set
 void nes_cpu::BVS(nes_addr_mode addr_mode) 
 {
-    int8_t rel = (int8_t) decode_byte();
-    if (is_overflow())
-        PC() += rel;
+    branch(is_overflow(), addr_mode);
 }
 
 // CLC - Clear carry flag
-void nes_cpu::CLC(nes_addr_mode addr_mode) { set_carry_flag(false); }
+void nes_cpu::CLC(nes_addr_mode addr_mode) { set_carry_flag(false); step_cpu(nes_cpu_cycle_t(2)); }
 
 // CLD - Clear decimal mode
-void nes_cpu::CLD(nes_addr_mode addr_mode) { set_decimal_flag(false); }
+void nes_cpu::CLD(nes_addr_mode addr_mode) { set_decimal_flag(false); step_cpu(nes_cpu_cycle_t(2)); }
 
 // CLI - Clear interrupt disable
-void nes_cpu::CLI(nes_addr_mode addr_mode) { set_interrupt_flag(false); }
+void nes_cpu::CLI(nes_addr_mode addr_mode) { set_interrupt_flag(false); step_cpu(nes_cpu_cycle_t(2)); }
 
 // CLV - Clear overflow flag
-void nes_cpu::CLV(nes_addr_mode addr_mode) { set_overflow_flag(false); }
+void nes_cpu::CLV(nes_addr_mode addr_mode) { set_overflow_flag(false); step_cpu(nes_cpu_cycle_t(2)); }
 
 // CPX - Compare X register
 void nes_cpu::CPX(nes_addr_mode addr_mode) 
 {
-    uint8_t val = read_operand(decode_operand(addr_mode));
+    auto op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);
 
     // flags
     uint8_t diff = X() - val;
@@ -808,12 +910,16 @@ void nes_cpu::CPX(nes_addr_mode addr_mode)
     set_carry_flag(X() >= val);
     set_zero_flag(diff == 0);
     set_negative_flag(diff & 0x80);
+
+    // cycle count
+    step_cpu(get_cpu_cycle(op, addr_mode));
 }
 
 // CPY - Compare Y register
 void nes_cpu::CPY(nes_addr_mode addr_mode) 
 {
-    uint8_t val = read_operand(decode_operand(addr_mode));
+    auto op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);;
 
     // flags
     uint8_t diff = Y() - val;
@@ -821,6 +927,9 @@ void nes_cpu::CPY(nes_addr_mode addr_mode)
     set_carry_flag(Y() >= val);
     set_zero_flag(diff == 0);
     set_negative_flag(diff & 0x80);
+
+    // cycle count
+    step_cpu(get_cpu_cycle(op, addr_mode));
 }
 
 // DEC - Decrement memory
@@ -831,6 +940,15 @@ void nes_cpu::DEC(nes_addr_mode addr_mode)
     poke(addr, new_val);
 
     calc_alu_flag(new_val);
+
+    BEGIN_CYCLE() 
+    {
+        IS_CYCLE(zp, 5);
+        IS_CYCLE(zp_ind_x, 6);
+        IS_CYCLE(abs, 6);
+        IS_CYCLE(abs_x, 7);
+    } 
+    END_CYCLE()
 }
 
 // DEX - Decrement X register
@@ -838,6 +956,9 @@ void nes_cpu::DEX(nes_addr_mode addr_mode)
 { 
     X()--; 
     calc_alu_flag(X());
+
+    // cycle count
+    step_cpu(nes_cpu_cycle_t(2));
 }
 
 // DEY - Decrement Y register
@@ -845,6 +966,9 @@ void nes_cpu::DEY(nes_addr_mode addr_mode)
 { 
     Y()--; 
     calc_alu_flag(Y());
+    
+    // cycle count
+    step_cpu(nes_cpu_cycle_t(2));
 }
 
 // INC - Increment memory
@@ -856,6 +980,15 @@ void nes_cpu::INC(nes_addr_mode addr_mode)
 
     // flags
     calc_alu_flag(new_val);
+
+    BEGIN_CYCLE() 
+    {
+        IS_CYCLE(zp, 5);
+        IS_CYCLE(zp_ind_x, 6);
+        IS_CYCLE(abs, 6);
+        IS_CYCLE(abs_x, 7);
+    } 
+    END_CYCLE()
 }
 
 // INX - Increment X
@@ -864,6 +997,8 @@ void nes_cpu::INX(nes_addr_mode addr_mode)
     X() = X() + 1;
 
     calc_alu_flag(X());
+
+    step_cpu(nes_cpu_cycle_t(2));
 }
 
 // INY - Increment Y
@@ -872,14 +1007,19 @@ void nes_cpu::INY(nes_addr_mode addr_mode)
     Y() = Y() + 1;
 
     calc_alu_flag(Y());
+    
+    step_cpu(nes_cpu_cycle_t(2));
 }
 
 // JMP - Jump 
 void nes_cpu::JMP(nes_addr_mode addr_mode) 
 {
+    assert(addr_mode == nes_addr_mode_abs_jmp || addr_mode == nes_addr_mode_ind_jmp);
+
     PC() = decode_operand_addr(addr_mode);
 
     // No impact to flags
+    step_cpu(addr_mode == nes_addr_mode_abs_jmp ? 3 : 5);
 }
 
 // JSR - Jump to subroutine
@@ -889,28 +1029,38 @@ void nes_cpu::JSR(nes_addr_mode addr_mode)
     push_word(PC() + 1);
 
     PC() = decode_operand_addr(addr_mode);
+
+    step_cpu(6);
 }
 
 // LDX - Load X register
 void nes_cpu::LDX(nes_addr_mode addr_mode) 
 {
-    X() = read_operand(decode_operand(addr_mode));
+    operand_t op = decode_operand(addr_mode);
+    X() = read_operand(op);
 
     calc_alu_flag(X());
+
+    // cycle count
+    step_cpu(get_cpu_cycle(op, addr_mode));
 }
 
 // LDY - Load Y register
 void nes_cpu::LDY(nes_addr_mode addr_mode) 
 {
-    Y() = read_operand(decode_operand(addr_mode));
+    operand_t op = decode_operand(addr_mode);
+    Y() = read_operand(op);
 
     calc_alu_flag(Y());
+
+    // cycle count
+    step_cpu(get_cpu_cycle(op, addr_mode));
 }
 
 // LSR - Logical shift right
 void nes_cpu::LSR(nes_addr_mode addr_mode)
 {
-    operand op = decode_operand(addr_mode);
+    operand_t op = decode_operand(addr_mode);
     uint8_t val = read_operand(op);
     uint8_t new_val = (val >> 1);
     write_operand(op, new_val);
@@ -922,6 +1072,9 @@ void nes_cpu::LSR(nes_addr_mode addr_mode)
     // http://obelisk.me.uk/6502/reference.html#ASL incorrectly states ASL detects A == 0
     set_zero_flag(new_val == 0);
     set_negative_flag(new_val & 0x80);
+
+    // cycle count
+    step_cpu(get_shift_cycle(addr_mode));
 }
 
 // NOP - NOP
@@ -930,13 +1083,22 @@ void nes_cpu::NOP(nes_addr_mode addr_mode)
     // For effective NOP (op codes that are "effectively" no-op but not the real NOP 0xea)
     // We always needed to decode the parameter
     if (addr_mode != nes_addr_mode::nes_addr_mode_imp)
-        decode_operand(addr_mode);
+    {
+        operand_t op = decode_operand(addr_mode);
+        step_cpu(get_cpu_cycle(op, addr_mode));
+    }
+    else
+    {
+        step_cpu(nes_cpu_cycle_t(2));
+    }
 }
 
 // PHA - Push accumulator
 void nes_cpu::PHA(nes_addr_mode addr_mode) 
 {
     push_byte(A());
+
+    step_cpu(3);
 }
 
 // PHP - Push processor status
@@ -945,6 +1107,8 @@ void nes_cpu::PHP(nes_addr_mode addr_mode)
     // http://wiki.nesdev.com/w/index.php/CPU_status_flag_behavior
     // Set bit 5 and 4 to 1 when copy status into from PHP
     push_byte(P() | 0x30);
+    
+    step_cpu(3);
 }
 
 // PLA - Pull accumulator
@@ -953,10 +1117,18 @@ void nes_cpu::PLA(nes_addr_mode addr_mode)
     A() = pop_byte();
 
     calc_alu_flag(A());
+
+    step_cpu(4);
 }
 
 // PLP - Pull processor status
 void nes_cpu::PLP(nes_addr_mode addr_mode) 
+{
+    _PLP();
+    step_cpu(4);
+}
+
+void nes_cpu::_PLP()
 {
     // http://wiki.nesdev.com/w/index.php/CPU_status_flag_behavior
     // Bit 5 and 4 are ignored when pulled from stack - which means they are preserved
@@ -968,7 +1140,7 @@ void nes_cpu::PLP(nes_addr_mode addr_mode)
 // ROL - Rotate left
 void nes_cpu::ROL(nes_addr_mode addr_mode)
 {
-    operand op = decode_operand(addr_mode);
+    operand_t op = decode_operand(addr_mode);
     uint8_t val = read_operand(op);
     uint8_t new_val = (val << 1) | get_carry();
     write_operand(op, new_val);
@@ -977,12 +1149,15 @@ void nes_cpu::ROL(nes_addr_mode addr_mode)
     set_carry_flag(val & 0x80);
     set_zero_flag(A() == 0);
     set_negative_flag(new_val & 0x80);
+
+    // cycle count
+    step_cpu(get_shift_cycle(addr_mode));
 }
 
 // ROR - Rotate right
 void nes_cpu::ROR(nes_addr_mode addr_mode)
 {
-    operand op = decode_operand(addr_mode);
+    operand_t op = decode_operand(addr_mode);
     uint8_t val = read_operand(op);
     uint8_t new_val = (val >> 1) | (get_carry() << 7);
     write_operand(op, new_val);
@@ -991,15 +1166,20 @@ void nes_cpu::ROR(nes_addr_mode addr_mode)
     set_carry_flag(val & 0x1);
     set_zero_flag(A() == 0);
     set_negative_flag(new_val & 0x80);
+
+    // cycle count
+    step_cpu(get_shift_cycle(addr_mode));
 }
 
 // RTI - Return from interrupt
 void nes_cpu::RTI(nes_addr_mode addr_mode) 
 {
-    PLP(nes_addr_mode_imp);
+    _PLP();
 
     uint16_t addr = pop_word();
     PC() = addr;
+
+    step_cpu(6);
 }
 
 // RTS - Return from subroutine
@@ -1008,31 +1188,60 @@ void nes_cpu::RTS(nes_addr_mode addr_mode)
     // See JSR - we pushed actual return address - 1
     uint16_t addr = pop_word() + 1;
     PC() = addr;
+
+    step_cpu(6);
 }
 
 // SEC - Set carry flag
-void nes_cpu::SEC(nes_addr_mode addr_mode) { set_carry_flag(true); }
+void nes_cpu::SEC(nes_addr_mode addr_mode) { set_carry_flag(true); step_cpu(nes_cpu_cycle_t(2));  }
 
 // SED - Set decimal flag
-void nes_cpu::SED(nes_addr_mode addr_mode) { set_decimal_flag(true); }
+void nes_cpu::SED(nes_addr_mode addr_mode) { set_decimal_flag(true); step_cpu(nes_cpu_cycle_t(2)); }
 
 // SEI - Set interrupt disable
-void nes_cpu::SEI(nes_addr_mode addr_mode) { set_interrupt_flag(true); }
+void nes_cpu::SEI(nes_addr_mode addr_mode) { set_interrupt_flag(true); step_cpu(nes_cpu_cycle_t(2)); }
+
+// Store Accumulator  
+void nes_cpu::STA(nes_addr_mode addr_mode)
+{
+    operand_t op = decode_operand(addr_mode);
+    assert(op.kind == operand_kind::operand_kind_addr);;
+
+    poke(op.addr_or_value, A());
+
+    // Doesn't impact any flags
+
+    // this instruction forces page-crossing timing
+    op.is_page_crossing = true;
+    step_cpu(get_cpu_cycle(op, addr_mode));
+}
 
 // STX - Store X
 void nes_cpu::STX(nes_addr_mode addr_mode) 
 {
-    poke(decode_operand_addr(addr_mode), X());
+    operand_t op = decode_operand(addr_mode);
+    assert(op.kind == operand_kind::operand_kind_addr);
+
+    poke(op.addr_or_value, X());
 
     // Doesn't impact any flags
+
+    // cycle count
+    step_cpu(get_cpu_cycle(op, addr_mode));
 }
 
 // STY- Store Y
 void nes_cpu::STY(nes_addr_mode addr_mode)
 {
-    poke(decode_operand_addr(addr_mode), Y());
+    operand_t op = decode_operand(addr_mode);
+    assert(op.kind == operand_kind::operand_kind_addr);
+
+    poke(op.addr_or_value, Y());;
 
     // Doesn't impact any flags
+
+    // cycle count
+    step_cpu(get_cpu_cycle(op, addr_mode));
 }
 
 // TAX - Transfer accumulator to X 
@@ -1041,6 +1250,8 @@ void nes_cpu::TAX(nes_addr_mode addr_mode)
     X() = A();
 
     calc_alu_flag(X());
+
+    step_cpu(nes_cpu_cycle_t(2));
 }
 
 // TAY - Transfer accumulator to Y
@@ -1049,6 +1260,8 @@ void nes_cpu::TAY(nes_addr_mode addr_mode)
     Y() = A();
 
     calc_alu_flag(Y());
+
+    step_cpu(nes_cpu_cycle_t(2));
 }
 
 // TSX - Transfer stack pointer to X 
@@ -1057,6 +1270,8 @@ void nes_cpu::TSX(nes_addr_mode addr_mode)
     X() = S();
 
     calc_alu_flag(X());
+
+    step_cpu(nes_cpu_cycle_t(2));
 }
 
 // TXA - Transfer X to acc
@@ -1065,6 +1280,8 @@ void nes_cpu::TXA(nes_addr_mode addr_mode)
     A() = X();
 
     calc_alu_flag(A());
+
+    step_cpu(nes_cpu_cycle_t(2));
 }
 
 // TXS - Transfer X to stack pointer
@@ -1073,6 +1290,8 @@ void nes_cpu::TXS(nes_addr_mode addr_mode)
     S() = X();
 
     // Doesn't impact flags
+
+    step_cpu(nes_cpu_cycle_t(2));
 }
 
 // TYA - Transfer Y to accumulator
@@ -1081,6 +1300,8 @@ void nes_cpu::TYA(nes_addr_mode addr_mode)
     A() = Y();
 
     calc_alu_flag(A());
+
+    step_cpu(nes_cpu_cycle_t(2));
 }
 
 // KIL - Kill?
@@ -1101,27 +1322,35 @@ void nes_cpu::AXS(nes_addr_mode addr_mode) { assert(false); }
 void nes_cpu::LAX(nes_addr_mode addr_mode)
 {
     // LDA + TAX
-    uint8_t val = read_operand(decode_operand(addr_mode));
+    operand_t op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);
     X() = A() = val;
 
     // flags
     calc_alu_flag(X());
+
+    // cycle count
+    step_cpu(get_cpu_cycle(op, addr_mode));
 }
 
 // SAX - AND A X
 void nes_cpu::SAX(nes_addr_mode addr_mode) 
 {
-    write_operand(decode_operand(addr_mode), A() & X());
+    operand_t op = decode_operand(addr_mode);
+    write_operand(op, A() & X());
+
+    // cycle count
+    step_cpu(get_cpu_cycle(op, addr_mode));
 }
 
 // DCP - DEC value then CMP value
 void nes_cpu::DCP(nes_addr_mode addr_mode) 
 {
     // DEC
-    auto operand = decode_operand(addr_mode);
-    uint8_t val = read_operand(operand);
+    auto op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);
     val--;
-    write_operand(operand, val);
+    write_operand(op, val);
 
     // CMP
     uint8_t diff = A() - val;
@@ -1129,26 +1358,34 @@ void nes_cpu::DCP(nes_addr_mode addr_mode)
     set_carry_flag(A() >= val);
     set_zero_flag(diff == 0);
     set_negative_flag(diff & 0x80);
+
+    // cycle count forces page crossing behavior (then +2)
+    op.is_page_crossing = true;
+    step_cpu(get_cpu_cycle(op, addr_mode) + nes_cpu_cycle_t(2));
 }
 
 // ISC - INC value then SBC value 
 void nes_cpu::ISC(nes_addr_mode addr_mode) 
 {
     // INC
-    auto operand = decode_operand(addr_mode);
-    uint8_t val = read_operand(operand);
+    auto op = decode_operand(addr_mode);
+    uint8_t val = read_operand(op);
     val++;
-    write_operand(operand, val);
+    write_operand(op, val);
 
     // SBC
     _SBC(val);
+
+    // cycle count forces page crossing behavior (then +2)
+    op.is_page_crossing = true;
+    step_cpu(get_cpu_cycle(op, addr_mode) + nes_cpu_cycle_t(2));
 }
 
 // RLA - ROL value then AND value
 void nes_cpu::RLA(nes_addr_mode addr_mode) 
 {
     // ROL
-    operand op = decode_operand(addr_mode);
+    operand_t op = decode_operand(addr_mode);
     uint8_t val = read_operand(op);
     uint8_t new_val = (val << 1) | get_carry();
     write_operand(op, new_val);
@@ -1160,12 +1397,16 @@ void nes_cpu::RLA(nes_addr_mode addr_mode)
 
     // flags    
     calc_alu_flag(A());
+
+    // cycle count forces page crossing behavior (then +2)
+    op.is_page_crossing = true;
+    step_cpu(get_cpu_cycle(op, addr_mode) + nes_cpu_cycle_t(2));
 }
 
 void nes_cpu::RRA(nes_addr_mode addr_mode) 
 { 
     // ROR
-    operand op = decode_operand(addr_mode);
+    operand_t op = decode_operand(addr_mode);
     uint8_t val = read_operand(op);
     uint8_t new_val = (val >> 1) | (get_carry() << 7);
     write_operand(op, new_val);
@@ -1174,13 +1415,17 @@ void nes_cpu::RRA(nes_addr_mode addr_mode)
 
     // ADC
     _ADC(new_val);
+
+    // cycle count forces page crossing behavior (then +2)
+    op.is_page_crossing = true;
+    step_cpu(get_cpu_cycle(op, addr_mode) + nes_cpu_cycle_t(2));
 }
 
 // SLO - ASL value then ORA value
 void nes_cpu::SLO(nes_addr_mode addr_mode) 
 { 
     // ASL
-    operand op = decode_operand(addr_mode);
+    operand_t op = decode_operand(addr_mode);
     uint8_t val = read_operand(op);
     uint8_t new_val = val << 1;
     write_operand(op, new_val);
@@ -1191,13 +1436,17 @@ void nes_cpu::SLO(nes_addr_mode addr_mode)
     A() |= new_val;
 
     calc_alu_flag(A());
+
+    // cycle count forces page crossing behavior (then +2)
+    op.is_page_crossing = true;
+    step_cpu(get_cpu_cycle(op, addr_mode) + nes_cpu_cycle_t(2));
 }
 
 // SRE - LSR value then EOR value
 void nes_cpu::SRE(nes_addr_mode addr_mode) 
 {
     // LSR
-    operand op = decode_operand(addr_mode);
+    operand_t op = decode_operand(addr_mode);
     uint8_t val = read_operand(op);
     uint8_t new_val = (val >> 1);
     write_operand(op, new_val);
@@ -1210,6 +1459,10 @@ void nes_cpu::SRE(nes_addr_mode addr_mode)
 
     // flags
     calc_alu_flag(A());
+
+    // cycle count forces page crossing behavior (then +2)
+    op.is_page_crossing = true;
+    step_cpu(get_cpu_cycle(op, addr_mode) + nes_cpu_cycle_t(2));
 }
 
 void nes_cpu::XAA(nes_addr_mode addr_mode) { assert(false); }
