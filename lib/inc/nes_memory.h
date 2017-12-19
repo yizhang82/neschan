@@ -45,7 +45,14 @@ public :
     {
         assert(size + addr <= RAM_SIZE);
         redirect_addr(addr);
-        memcpy_s(&_ram[0] + addr, RAM_SIZE, data, size);
+        memcpy_s(&_ram[0] + addr, RAM_SIZE - addr, data, size);
+    }
+
+    void get_bytes(uint8_t *dest, uint16_t dest_size, uint16_t src_addr, size_t src_size)
+    {
+        assert(src_addr + src_size <= RAM_SIZE);
+        redirect_addr(src_addr);
+        memcpy_s(dest, dest_size, &_ram[0] + src_addr, src_size);
     }
 
     uint8_t set_word(uint16_t addr, uint16_t value)
