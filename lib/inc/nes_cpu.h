@@ -7,6 +7,7 @@
 
 #include "nes_memory.h"
 #include "nes_mapper.h"
+#include "nes_component.h"
 #include <vector>
 
 using namespace std;
@@ -90,45 +91,23 @@ enum nes_op_code
 };
 
 
-class nes_cpu
+class nes_cpu : public nes_component
 {
 public :
-    nes_cpu(nes_memory &mem)
-        :_mem(mem)
+    nes_cpu() 
     {
-        memset(&_context, 0, sizeof(_context));
+        _system = nullptr;
+        _mem = nullptr;
     }
 
-    void power_on()
-    {
-        // @TODO - Simulate full power-on state
-        // http://wiki.nesdev.com/w/index.php/CPU_power_up_state
-        _context.P = 0x24;          // @TODO - Should be 0x34 - but temporarily set to 0x24 to match nintendulator baseline 
-        _context.A = _context.X = _context.Y = 0;
-        _context.S = 0xfd;
-        _context.PC = 0;
-    }
+public :
+    //
+    // nes_component overrides
+    //
+    virtual void power_on(nes_system *system);
 
-    void run_program(vector<uint8_t> &&program, uint16_t addr)
-    {
-        power_on();
-        
-        _mem.set_bytes(addr, program.data(), program.size());
-
-        _context.PC = addr;
-        execute();
-    }
-
-    void run_rom(const char *rom_path)
-    {
-        power_on();
-
-        auto mapper = nes_rom_loader::load_from(rom_path);
-        _mem.load_mapper(mapper);
-
-        PC() = mapper->get_code_addr();
-        execute();
-    }
+    virtual void reset();
+    virtual void step_to(nes_cycle_t count);
 
 public :
     void set_carry_flag(bool set) { set_flag(PROCESSOR_STATUS_CARRY_MASK, set); }
@@ -151,9 +130,9 @@ public :
     void set_negative_flag(bool set) { set_flag(PROCESSOR_STATUS_NEGATIVE_MASK, set); }
     bool is_negative() { return _context.P & PROCESSOR_STATUS_NEGATIVE_MASK; }
 
-    uint8_t peek(uint16_t addr) { return _mem.get_byte(addr); }
-    uint16_t peek_word(uint16_t addr) { return _mem.get_word(addr); }
-    void poke(uint16_t addr, uint8_t value) { _mem.set_byte(addr, value); }
+    uint8_t peek(uint16_t addr) { return _mem->get_byte(addr); }
+    uint16_t peek_word(uint16_t addr) { return _mem->get_word(addr); }
+    void poke(uint16_t addr, uint8_t value) { _mem->set_byte(addr, value); }
     
     uint8_t &A() { return _context.A; }
     uint8_t &X() { return _context.X; }
@@ -172,7 +151,7 @@ public :
     {
         // stack grow top->down
         // no underflow/overflow detection
-        _mem.set_byte((_context.S--) + STACK_OFFSET, val);
+        _mem->set_byte((_context.S--) + STACK_OFFSET, val);
     }
 
     void push_word(uint16_t val)
@@ -187,7 +166,7 @@ public :
         // stack grow top->down
         // no underflow/overflow detection        
         _context.S++;
-        return _mem.get_byte(_context.S + STACK_OFFSET);
+        return _mem->get_byte(_context.S + STACK_OFFSET);
     }
 
     int16_t pop_word()    
@@ -203,12 +182,12 @@ private :
 
     uint8_t decode_byte()
     {
-        return _mem.get_byte(_context.PC++);
+        return _mem->get_byte(_context.PC++);
     }
 
     uint16_t decode_word()
     {
-        auto word = _mem.get_word(_context.PC);
+        auto word = _mem->get_word(_context.PC);
         _context.PC += 2;
         return word;
     }
@@ -313,7 +292,7 @@ private :
         else if (addr_mode == nes_addr_mode::nes_addr_mode_ind)
         {
             // Indirect
-            return _mem.get_word(decode_word());
+            return _mem->get_word(decode_word());
         }
         else if (addr_mode == nes_addr_mode::nes_addr_mode_ind_jmp)
         {
@@ -583,7 +562,8 @@ private :
     void LAS(nes_addr_mode addr_mode);
 
 private :
-    nes_memory      &_mem;
+    nes_system      *_system;
+    nes_memory      *_mem;
     nes_cpu_context _context;
     uint32_t        _cycle;
 };

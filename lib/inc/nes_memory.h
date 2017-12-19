@@ -4,29 +4,20 @@
 #include <cassert>
 #include <memory>
 
+#include "nes_component.h"
+
 using namespace std;
 
 #define RAM_SIZE 0x10000
 
 class nes_mapper;
 
-class nes_memory
+class nes_memory : public nes_component
 {
 public :
     nes_memory()
     {
-        _ram = nullptr;
-    }
-
-    void initialize()
-    {
         _ram = make_unique<uint8_t []>(RAM_SIZE);
-        memset(&_ram[0], 0, RAM_SIZE);
-    }
-
-    ~nes_memory()
-    {
-        _ram = nullptr;
     }
 
     uint8_t get_byte(uint16_t addr)
@@ -82,7 +73,26 @@ public :
 
     void load_mapper(shared_ptr<nes_mapper> &mapper);
 
-    nes_mapper& get_mapper();
+    nes_mapper& get_mapper() { return *_mapper; }
+
+public :
+    //
+    // nes_component overrides
+    //
+    virtual void power_on(nes_system *system)
+    {
+        memset(&_ram[0], 0, RAM_SIZE);
+    }
+
+    virtual void reset()
+    {
+        // Do nothing
+    }
+
+    virtual void step_to(nes_cycle_t count)
+    {
+        // Do nothing
+    }
 
 private :
     unique_ptr<uint8_t[]> _ram;

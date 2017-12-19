@@ -1,6 +1,33 @@
 #include "stdafx.h"
 #include "nes_cpu.h"
+#include "nes_system.h"
 #include "trace.h"
+
+void nes_cpu::power_on(nes_system *system)
+{
+    _system = system;
+    _mem = system->ram();
+
+    // @TODO - Simulate full power-on state
+    // http://wiki.nesdev.com/w/index.php/CPU_power_up_state
+    _context.P = 0x24;          // @TODO - Should be 0x34 - but temporarily set to 0x24 to match nintendulator baseline 
+    _context.A = _context.X = _context.Y = 0;
+    _context.S = 0xfd;
+    _context.PC = 0;
+}
+
+void nes_cpu::reset()
+{
+
+}
+
+void nes_cpu::step_to(nes_cycle_t count)
+{
+    // @TODO - Implement correct cycle count
+    execute();
+
+    _system->stop();
+}
 
 #define IS_ALU_OP_CODE_(op, offset, mode) case nes_op_code::op##_base + offset : LOG(get_op_str(#op, nes_addr_mode::nes_addr_mode_##mode)); op(nes_addr_mode::nes_addr_mode_##mode); break; 
 #define IS_ALU_OP_CODE(op) \

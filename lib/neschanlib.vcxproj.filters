@@ -32,6 +32,15 @@
     <ClInclude Include="inc\nes_mapper.h">
       <Filter>inc</Filter>
     </ClInclude>
+    <ClInclude Include="inc\nes_system.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\nes_ppu.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\nes_component.h">
+      <Filter>inc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp" />
@@ -39,6 +48,12 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\nes_cpu.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\nes_system.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\nes_ppu.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
