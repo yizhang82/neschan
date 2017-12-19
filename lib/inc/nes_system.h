@@ -2,8 +2,11 @@
 
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 #include "nes_component.h"
+
+using namespace std;
 
 class nes_cpu;
 class nes_memory;

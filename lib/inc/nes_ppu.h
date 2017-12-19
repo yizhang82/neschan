@@ -137,14 +137,20 @@ public :
     //
     // All registers
     //
-    void update_latch(uint8_t val)
+    void write_latch(uint8_t val)
     {
         _latch = val;
     }
 
+    uint8_t read_latch()
+    {
+        // This latch is also subject to decay but it is random so no need to emulate that
+        return _latch;
+    }
+
     void write_PPUCTRL(uint8_t val)
     {
-        update_latch(val);
+        write_latch(val);
 
         uint8_t name_table_addr_bit = val & PPUCTRL_BASE_NAME_TABLE_ADDR_MASK;
         _name_tbl_addr = 0x2000 + uint16_t(name_table_addr_bit) * 0x400;
@@ -160,12 +166,11 @@ public :
 
     void write_PPUMASK(uint8_t val)
     {
-        update_latch(val);
+        write_latch(val);
 
         _show_bg = val & PPUMASK_SHOW_BACKGROUND;
         _show_sprites = val & PPUMASK_SHOW_SPRITES;
         _gray_scale_mode = val & PPUMASK_GRAYSCALE;
-
     }
 
     uint8_t read_PPUSTATUS()
@@ -182,24 +187,36 @@ public :
         _vblank_started = false;
         _addr_latch = 0;
 
+        write_latch(status);
         return status;
     }
 
     void write_OAMADDR(uint8_t val)
     {
-        update_latch(val);
+        write_latch(val);
 
         _oam_addr = val;
     }
 
     void write_OAMDATA(uint8_t val)
     {
+        write_latch(val);
         _oam[_oam_addr] = val;
         _oam_addr++;
     }
 
+    uint8_t read_OAMDATA()
+    {
+        // @TODO - This exposes internal OAM access during rendering
+        uint8_t val = _oam[_oam_addr];
+        write_latch(val);
+        return val;
+    }
+
     void write_PPUSCROLL(uint8_t val)
     {
+        write_latch(val);
+
         _addr_latch = (_addr_latch + 1) % 2;
         if (_addr_latch == 1)
             _scroll_x = val;
@@ -209,6 +226,8 @@ public :
 
     void write_PPUADDR(uint8_t val)
     {
+        write_latch(val);
+
         _addr_latch = (_addr_latch + 1) % 2;
         if (_addr_latch == 1)
             _ppu_addr = (_ppu_addr & 0x00ff) | (uint16_t(val) << 8);
@@ -218,6 +237,7 @@ public :
 
     void write_PPUDATA(uint8_t val)
     {
+        write_latch(val);
         write_byte(_ppu_addr, val);
         _ppu_addr += _ppu_addr_inc;
     }
@@ -226,6 +246,7 @@ public :
     {
         uint8_t val = read_byte(_ppu_addr);
         _ppu_addr += _ppu_addr_inc;
+        write_latch(val);
         return val;
     }
 

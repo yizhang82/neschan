@@ -11,6 +11,7 @@ using namespace std;
 #define RAM_SIZE 0x10000
 
 class nes_mapper;
+class nes_ppu;
 
 class nes_memory : public nes_component
 {
@@ -20,24 +21,40 @@ public :
         _ram = make_unique<uint8_t []>(RAM_SIZE);
     }
 
+    bool is_ppu_reg(uint16_t addr)
+    {
+        // $2000~$2007
+        if ((addr & 0xfff8) == 0x2000)
+            return true;
+        if (addr == 0x4014)
+            return true;
+        return false;
+    }
+
+    uint8_t read_ppu_reg(uint16_t addr);
+    void write_ppu_reg(uint16_t addr, uint8_t val);
+
     uint8_t get_byte(uint16_t addr)
     {
         redirect_addr(addr);
+        if (is_ppu_reg(addr))
+            return read_ppu_reg(addr);
 
         return _ram[addr];
     }
 
     uint16_t get_word(uint16_t addr)
     {
-        redirect_addr(addr);
-
         // NES 6502 CPU is little endian
-        return (uint16_t)_ram[addr] + ((uint16_t)_ram[addr + 1] << 8);
+        return get_byte(addr) + (uint16_t(get_byte(addr + 1)) << 8);
     }
 
     void set_byte(uint16_t addr, uint8_t value)
     {
         redirect_addr(addr);
+        if (is_ppu_reg(addr))
+            return write_ppu_reg(addr, value);
+
         _ram[addr] = value;
     }
 
@@ -57,11 +74,9 @@ public :
 
     uint8_t set_word(uint16_t addr, uint16_t value)
     {
-        redirect_addr(addr);
-
         // NES 6502 CPU is little endian
-        _ram[addr] = value & 0xff;
-        _ram[addr + 1] = (value >> 8);
+        set_byte(addr, value & 0xff);
+        set_byte(addr + 1, (value >> 8));
     }
 
     void redirect_addr(uint16_t &addr)
@@ -73,7 +88,7 @@ public :
         }
         else if ((addr & 0xE000) == 0x2000)
         {
-            // map 0x2000~0x2008 every 8 bytes until 0x3ffff
+            // map 0x2000~0x2008 every 8 bytes until 0x3fff
             addr &= 0x2007;
         }
     }
@@ -86,11 +101,7 @@ public :
     //
     // nes_component overrides
     //
-    virtual void power_on(nes_system *system)
-    {
-        memset(&_ram[0], 0, RAM_SIZE);
-    }
-
+    virtual void power_on(nes_system *system);
     virtual void reset()
     {
         // Do nothing
@@ -104,5 +115,8 @@ public :
 private :
     unique_ptr<uint8_t[]> _ram;
     shared_ptr<nes_mapper> _mapper;
+
+    nes_system *_system;
+    nes_ppu *_ppu;
 };
 
