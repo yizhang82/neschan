@@ -78,6 +78,9 @@
 // Clear after reading $2002 and at dot 1 of the pre-render line
 #define PPUSTATUS_VBLANK_START 0x80
 
+#define PPU_SCREEN_X 256
+#define PPU_SCREEN_Y 240
+
 #define PPU_SCANLINE_COUNT 262
 
 class nes_system;
@@ -128,10 +131,13 @@ public :
     void init();
 
     void step_ppu(nes_ppu_cycle_t cycle);
+    void fetch_tile();
 
     bool is_ready() { return _master_cycle > nes_ppu_cycle_t(29658); }
 
     void stop_after_frame(int frame) { _stop_after_frame = frame; }
+
+    bool is_render_off() { return !_show_bg && !_show_sprites; }
 
 public :
 
@@ -153,9 +159,18 @@ public :
     void redirect_addr(uint16_t &addr)
     {
         if (addr >= 0x3000 && addr < 0x3f00)
+        {
             addr -= 0x1000;
-        else if (addr >= 0x3f20)
+        }
+        else if ((addr & 0x3f00) == 0x3f00)
+        {
+            // mirror of palette table every 0x20 bytes
             addr &= 0xff1f;
+
+            // mirror special case 0x3f10 = 0x3f00, 0x3f14 = 0x3f04, ...
+            if ((addr & 0x10) == 0x10)
+                addr &= 0xff0f;
+        }
     }
 
     // Avoid destructive reads for PPU registers
@@ -193,7 +208,7 @@ public :
         uint8_t name_table_addr_bit = val & PPUCTRL_BASE_NAME_TABLE_ADDR_MASK;
         _name_tbl_addr = 0x2000 + uint16_t(name_table_addr_bit) * 0x400;
 
-        _bg_tbl_addr = (val & PPUCTRL_BACKGROUND_PATTERN_TABLE_ADDRESS_MASK) << 0x8;
+        _pattern_tbl_addr = (val & PPUCTRL_BACKGROUND_PATTERN_TABLE_ADDRESS_MASK) << 0x8;
 
         _use_8x16_sprite = val & PPUCTRL_SPRITE_SIZE_MASK;
 
@@ -310,6 +325,17 @@ public :
     void oam_dma(uint16_t addr);
 
 private :
+    uint8_t get_palette_color(bool is_background, uint8_t palette_index_4_bit)
+    {
+        // There is only one universal backdrop color 
+        if (palette_index_4_bit == 0)
+            return read_byte(0x3f00);
+
+        uint16_t palette_addr = (is_background ? 0x3f00 : 0x3f10) | palette_index_4_bit;
+        return read_byte(0x3f00);
+    }
+
+private :
     nes_system *_system;
 
     unique_ptr<uint8_t[]> _vram;
@@ -317,7 +343,7 @@ private :
 
     // PPUCTRL data
     uint16_t _name_tbl_addr;
-    uint16_t _bg_tbl_addr;
+    uint16_t _pattern_tbl_addr;
     uint16_t _ppu_addr_inc;
     bool _vblank_nmi;
     bool _use_8x16_sprite;
@@ -345,10 +371,18 @@ private :
     uint16_t _ppu_addr;
 
     nes_cycle_t _master_cycle;
-    nes_cycle_t _scanline_cycle;
+    nes_ppu_cycle_t _scanline_cycle;
     int _cur_scanline;
     int _frame_count;
 
-    bool _protect_register;     // protect PPU register from destructive reads temporarily
-    int _stop_after_frame;            // stop after X frames - useful for testing
+    bool _protect_register;         // protect PPU register from destructive reads temporarily
+    int _stop_after_frame;          // stop after X frames - useful for testing
+
+    // rendering states
+    uint8_t _tile_index;                // tile index from name table - it consists of 
+    uint8_t _tile_palette_bit32;        // palette index bit 3/2 from attribute table
+    uint16_t _tile_addr;                // address of current tile from pattern table 
+    uint8_t _bitplane0;                 // bitplane0 of current tile from pattern table
+    uint8_t _frame_buffer[256 * 240];   // entire frame buffer - only 4 bit is used
+    uint8_t _pixel_cycle[8];            // pixels in each cycle
 };
