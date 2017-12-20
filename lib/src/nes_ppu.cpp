@@ -57,7 +57,9 @@ void nes_ppu::init()
     _scanline_cycle = nes_cycle_t(0);
     _cur_scanline = 0;
 
+    _protect_register = false;
     _frame_count = 0;
+    _stop_after_frame = 0;
 }
 
 void nes_ppu::reset()
@@ -134,8 +136,8 @@ void nes_ppu::step_to(nes_cycle_t count)
         }
         else if (_cur_scanline == 240)
         {
-            // idles
-
+            // idles - jump straight to the next scanline
+            step_ppu(PPU_SCANLINE_CYCLE - nes_ppu_cycle_t(1));
         }
         else if (_cur_scanline < 261)
         {
@@ -143,8 +145,11 @@ void nes_ppu::step_to(nes_cycle_t count)
             {
                 TRACE("[PPU] SCANLINE = 241, VBlank BEGIN");
                 _vblank_started = true;
-
-                // @TODO - request CPU to do NMI
+                if (_vblank_nmi)
+                {
+                    // Request NMI so that games can do their rendering
+                    _system->cpu()->request_nmi();
+                }
             }
         }
         else
@@ -179,6 +184,9 @@ void nes_ppu::step_ppu(nes_ppu_cycle_t count)
         {
             _cur_scanline %= PPU_SCANLINE_COUNT;
             _frame_count++;
+
+            if (_frame_count > _stop_after_frame)
+                _system->stop();
         }
         TRACE("[NES_PPU] SCANLINE " << std::dec << _cur_scanline << " ------ ");
     }

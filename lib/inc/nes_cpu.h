@@ -146,6 +146,8 @@ public :
     uint8_t &P() { return _context.P; }
     uint8_t &S() { return _context.S; }
 
+    void request_nmi() { _nmi_pending = true; };
+
 public :
     //
     // Stack operations
@@ -589,5 +591,6 @@ private :
     nes_ppu         *_ppu;
     nes_cpu_context _context;
     nes_cycle_t     _cycle;
+    bool            _nmi_pending;           // NMI interrupt pending from PPU vertical blanking
 };
 

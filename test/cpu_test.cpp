@@ -13,6 +13,8 @@ TEST_CASE("CPU tests") {
     SUBCASE("simple LDA/STA/ADD") {
         INIT_TRACE("neschan.instrtest.simple.log");
 
+        system.power_on();
+
         // @TODO - We need an assembler to make testing easier
         system.run_program(
             {
@@ -37,6 +39,8 @@ TEST_CASE("CPU tests") {
     }
     SUBCASE("full instruction test") {
         INIT_TRACE("neschan.instrtest.full.log");
+
+        system.power_on();
 
         system.run_rom("./roms/nestest/nestest.nes", nes_rom_exec_mode_direct);
         

@@ -66,7 +66,18 @@ void nes_cpu::step_to(nes_cycle_t new_count)
 
 void nes_cpu::exec_one_instruction()
 {
-    // while (true)
+    if (_nmi_pending)
+    {
+        // generate NMI
+        TRACE("[NES_CPU] NMI interrupt");
+
+        push_word(PC());
+        step_cpu(7);
+        PC() = peek_word(NMI_HANDLER);
+
+        _nmi_pending = false;
+    }
+
     {
         // next op
         auto op_code = (nes_op_code)decode_byte();
@@ -1007,18 +1018,10 @@ void nes_cpu::JMP(nes_addr_mode addr_mode)
 {
     assert(addr_mode == nes_addr_mode_abs_jmp || addr_mode == nes_addr_mode_ind_jmp);
 
-    uint16_t cur_loc = PC() - 1;
     PC() = decode_operand_addr(addr_mode);
     
     // No impact to flags
     step_cpu(addr_mode == nes_addr_mode_abs_jmp ? 3 : 5);
-
-    if (cur_loc == PC())
-    {
-        // We are in a infinite loop - some test ROM does this to let you see the result screen
-        // For testing purpose at this point let's force exit the loop to let the test finish
-        _system->stop();
-    }
 }
 
 // JSR - Jump to subroutine

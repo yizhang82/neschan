@@ -112,7 +112,6 @@ public :
     {
         _vram = make_unique<uint8_t[]>(PPU_VRAM_SIZE);
         _oam = make_unique<uint8_t[]>(PPU_OAM_SIZE);
-        _protect = false;
     }
 
 public :
@@ -131,6 +130,8 @@ public :
     void step_ppu(nes_ppu_cycle_t cycle);
 
     bool is_ready() { return _master_cycle > nes_ppu_cycle_t(29658); }
+
+    void stop_after_frame(int frame) { _stop_after_frame = frame; }
 
 public :
 
@@ -162,7 +163,7 @@ public :
     // See nes_ppu_protect
     void set_protect(bool set)
     {
-        _protect = set;
+        _protect_register = set;
     }
 
     //
@@ -171,7 +172,7 @@ public :
     void write_latch(uint8_t val)
     {
         // Don't update latch in "protected reads"  
-        if (_protect) return;
+        if (_protect_register) return;
 
         _latch = val;
     }
@@ -224,7 +225,7 @@ public :
             status |= PPUSTATUS_VBLANK_START;
 
         // Don't clear flags
-        if (!_protect)
+        if (!_protect_register)
         {
             // clear various flags after reading
             _vblank_started = false;
@@ -293,7 +294,7 @@ public :
     {
         uint8_t val = read_byte(_ppu_addr);
 
-        if (!_protect) 
+        if (!_protect_register) 
             _ppu_addr += _ppu_addr_inc;
 
         write_latch(val);
@@ -348,5 +349,6 @@ private :
     int _cur_scanline;
     int _frame_count;
 
-    bool _protect;
+    bool _protect_register;     // protect PPU register from destructive reads temporarily
+    int _stop_after_frame;            // stop after X frames - useful for testing
 };

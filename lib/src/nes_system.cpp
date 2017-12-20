@@ -37,8 +37,6 @@ void nes_system::reset()
 
 void nes_system::run_program(vector<uint8_t> &&program, uint16_t addr)
 {
-    power_on();
-
     _ram->set_bytes(addr, program.data(), program.size());
     _cpu->PC() = addr;
 
@@ -47,8 +45,6 @@ void nes_system::run_program(vector<uint8_t> &&program, uint16_t addr)
 
 void nes_system::run_rom(const char *rom_path, nes_rom_exec_mode mode)
 {
-    power_on();
-
     auto mapper = nes_rom_loader::load_from(rom_path);
     _ram->load_mapper(mapper);
     if (mode == nes_rom_exec_mode_direct)
