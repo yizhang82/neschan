@@ -82,6 +82,15 @@ class nes_system;
 
 using namespace std;
 
+enum nes_ppu_state
+{
+    nes_ppu_state_power_on,     // initial
+    nes_ppu_state_vbl_1,        // 1st VBL flag set
+    nes_ppu_state_vbl_2,        // 2nd VBL flag set
+    nes_ppu_state_ready,        // ready to render
+    nes_ppu_state_render,       // rendering
+};
+
 class nes_ppu : public nes_component
 {
 public :
@@ -95,22 +104,17 @@ public :
     //
     // nes_component overrides
     //
-    virtual void power_on(nes_system *system)
-    {
-        _system = system;
-    }
+    virtual void power_on(nes_system *system);
 
-    virtual void reset()
-    {
-        // Do nothing
-    }
+    virtual void reset();
 
-    virtual void step_to(nes_cycle_t count)
-    {
-        // Do nothing
-    }
+    virtual void step_to(nes_cycle_t count);
 
 public :
+    void init();
+
+    void step_ppu(nes_ppu_cycle_t cycle);
+
     //
     // PPU internal ram
     //
@@ -292,4 +296,6 @@ private :
 
     // PPUADDR
     uint16_t _ppu_addr;
+
+    nes_cycle_t _cycle;
 };

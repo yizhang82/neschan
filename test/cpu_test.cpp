@@ -7,7 +7,7 @@
 
 using namespace std;
 
-TEST_CASE("instruction tests") {
+TEST_CASE("CPU tests") {
     nes_system system;
 
     SUBCASE("simple LDA/STA/ADD") {
@@ -42,7 +42,7 @@ TEST_CASE("instruction tests") {
 
         system.power_on();
         
-        system.run_rom("./roms/nestest/nestest.nes");
+        system.run_rom("./roms/nestest/nestest.nes", nes_rom_exec_mode_direct);
         
         auto cpu = system.cpu();
 
@@ -54,5 +54,4 @@ TEST_CASE("instruction tests") {
         CHECK(cpu->peek(0x2) == 0);
         CHECK(cpu->peek(0x3) == 0);
     }
-
 }

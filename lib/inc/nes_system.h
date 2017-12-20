@@ -13,6 +13,19 @@ class nes_memory;
 class nes_apu;
 class nes_ppu;
 
+enum nes_rom_exec_mode
+{
+    // Run the PRG ROM directly - useful for "simple" ROMs or emulator doesn't have full functionality
+    // such as PPU initialization sequence
+    nes_rom_exec_mode_direct,
+
+    // At power on, jump directly to the reset 'interrupt' handler which is effectively main
+    // This is what ROM does typically
+    // Interestingly this isn't really "documented" in nesdev.com - I had to infer it from
+    // inspecting ROMs and using debugger from other emulators
+    nes_rom_exec_mode_reset
+};
+
 //
 // The NES system hardware that manages all the invidual components - CPU, PPU, APU, RAM, etc
 // It synchronizes between different components
@@ -36,7 +49,7 @@ public :
     bool stop_requested() { return _stop_requested; }
     void run_program(vector<uint8_t> &&program, uint16_t addr);
 
-    void run_rom(const char *rom_path);
+    void run_rom(const char *rom_path, nes_rom_exec_mode mode);
    
     nes_cpu     *cpu() { return _cpu.get(); }
     nes_memory  *ram() { return _ram.get(); }

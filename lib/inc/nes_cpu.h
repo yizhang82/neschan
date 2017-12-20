@@ -43,6 +43,13 @@ using namespace std;
 #define PROCESSOR_STATUS_OVERFLOW_MASK        0x40
 #define PROCESSOR_STATUS_NEGATIVE_MASK        0x80
 
+// Vertical blanking interrupt handler
+#define NMI_HANDLER     0xfffa
+
+// Reset handler - the "main" for NES roms
+#define RESET_HANDLER   0xfffc
+
+#define IRQ_HANDLER     0xfffe
 
 // Addressing modes of 6502
 // http://obelisk.me.uk/6502/addressing.html
