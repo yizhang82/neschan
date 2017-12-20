@@ -586,6 +586,7 @@ private :
 private :
     nes_system      *_system;
     nes_memory      *_mem;
+    nes_ppu         *_ppu;
     nes_cpu_context _context;
     nes_cycle_t     _cycle;
 };

@@ -78,6 +78,8 @@
 // Clear after reading $2002 and at dot 1 of the pre-render line
 #define PPUSTATUS_VBLANK_START 0x80
 
+#define PPU_SCANLINE_COUNT 262
+
 class nes_system;
 
 using namespace std;
@@ -91,6 +93,18 @@ enum nes_ppu_state
     nes_ppu_state_render,       // rendering
 };
 
+// Protect internal register state to avoid destructive reads in log code
+// For example, we don't want to clear v-blank in our logging code when reads from PPUSTATUS
+class nes_ppu_protect
+{
+public :
+    nes_ppu_protect(nes_ppu *ppu);
+    ~nes_ppu_protect();
+
+private :
+    nes_ppu *_ppu;
+};
+
 class nes_ppu : public nes_component
 {
 public :
@@ -98,6 +112,7 @@ public :
     {
         _vram = make_unique<uint8_t[]>(PPU_VRAM_SIZE);
         _oam = make_unique<uint8_t[]>(PPU_OAM_SIZE);
+        _protect = false;
     }
 
 public :
@@ -114,6 +129,10 @@ public :
     void init();
 
     void step_ppu(nes_ppu_cycle_t cycle);
+
+    bool is_ready() { return _master_cycle > nes_ppu_cycle_t(29658); }
+
+public :
 
     //
     // PPU internal ram
@@ -138,11 +157,22 @@ public :
             addr &= 0xff1f;
     }
 
+    // Avoid destructive reads for PPU registers
+    // Useful in logging code
+    // See nes_ppu_protect
+    void set_protect(bool set)
+    {
+        _protect = set;
+    }
+
     //
     // All registers
     //
     void write_latch(uint8_t val)
     {
+        // Don't update latch in "protected reads"  
+        if (_protect) return;
+
         _latch = val;
     }
 
@@ -153,7 +183,10 @@ public :
     }
 
     void write_PPUCTRL(uint8_t val)
-    {
+    {   
+        // Ignore write before PPU is ready
+        if (!is_ready()) return;
+
         write_latch(val);
 
         uint8_t name_table_addr_bit = val & PPUCTRL_BASE_NAME_TABLE_ADDR_MASK;
@@ -170,6 +203,9 @@ public :
 
     void write_PPUMASK(uint8_t val)
     {
+        // Ignore write before PPU is ready
+        if (!is_ready()) return;
+
         write_latch(val);
 
         _show_bg = val & PPUMASK_SHOW_BACKGROUND;
@@ -187,9 +223,13 @@ public :
         if (_vblank_started)
             status |= PPUSTATUS_VBLANK_START;
 
-        // clear various flags after reading
-        _vblank_started = false;
-        _addr_latch = 0;
+        // Don't clear flags
+        if (!_protect)
+        {
+            // clear various flags after reading
+            _vblank_started = false;
+            _addr_latch = 0;
+        }
 
         write_latch(status);
         return status;
@@ -219,6 +259,9 @@ public :
 
     void write_PPUSCROLL(uint8_t val)
     {
+        // Ignore write before PPU is ready
+        if (!is_ready()) return;
+
         write_latch(val);
 
         _addr_latch = (_addr_latch + 1) % 2;
@@ -249,7 +292,10 @@ public :
     uint8_t read_PPUDATA()
     {
         uint8_t val = read_byte(_ppu_addr);
-        _ppu_addr += _ppu_addr_inc;
+
+        if (!_protect) 
+            _ppu_addr += _ppu_addr_inc;
+
         write_latch(val);
         return val;
     }
@@ -297,5 +343,10 @@ private :
     // PPUADDR
     uint16_t _ppu_addr;
 
-    nes_cycle_t _cycle;
+    nes_cycle_t _master_cycle;
+    nes_cycle_t _scanline_cycle;
+    int _cur_scanline;
+    int _frame_count;
+
+    bool _protect;
 };

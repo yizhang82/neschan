@@ -7,6 +7,7 @@ void nes_cpu::power_on(nes_system *system)
 {
     _system = system;
     _mem = system->ram();
+    _ppu = system->ppu();
     _cycle = nes_cycle_t(0);
 
     // @TODO - Simulate full power-on state
@@ -29,7 +30,7 @@ void nes_cpu::step_to(nes_cycle_t new_count)
         exec_one_instruction();    
 }
 
-#define IS_ALU_OP_CODE_(op, offset, mode) case nes_op_code::op##_base + offset : LOG(get_op_str(#op, nes_addr_mode::nes_addr_mode_##mode)); op(nes_addr_mode::nes_addr_mode_##mode); break; 
+#define IS_ALU_OP_CODE_(op, offset, mode) case nes_op_code::op##_base + offset : DBG(get_op_str(#op, nes_addr_mode::nes_addr_mode_##mode)); op(nes_addr_mode::nes_addr_mode_##mode); break; 
 #define IS_ALU_OP_CODE(op) \
     IS_ALU_OP_CODE_(op, 0x9, imm) \
     IS_ALU_OP_CODE_(op, 0x5, zp) \
@@ -49,7 +50,7 @@ void nes_cpu::step_to(nes_cycle_t new_count)
     IS_ALU_OP_CODE_(op, 0x1, ind_x) \
     IS_ALU_OP_CODE_(op, 0x11, ind_y)
 
-#define IS_RMW_OP_CODE_(op, opcode, offset, mode) case opcode + offset : LOG(get_op_str(#op, nes_addr_mode::nes_addr_mode_##mode)); op(nes_addr_mode::nes_addr_mode_##mode); break; 
+#define IS_RMW_OP_CODE_(op, opcode, offset, mode) case opcode + offset : DBG(get_op_str(#op, nes_addr_mode::nes_addr_mode_##mode)); op(nes_addr_mode::nes_addr_mode_##mode); break; 
 #define IS_RMW_OP_CODE(op, opcode) \
     IS_RMW_OP_CODE_(op, opcode, 0x6, zp) \
     IS_RMW_OP_CODE_(op, opcode, 0xa, acc) \
@@ -57,11 +58,11 @@ void nes_cpu::step_to(nes_cycle_t new_count)
     IS_RMW_OP_CODE_(op, opcode, 0xe, abs) \
     IS_RMW_OP_CODE_(op, opcode, 0x1e, abs_x)
 
-#define IS_OP_CODE(op, opcode) case opcode : LOG(get_op_str(#op, nes_addr_mode_imp)); op(nes_addr_mode_imp); break;
-#define IS_OP_CODE_MODE(op, opcode, mode) case opcode : LOG(get_op_str(#op, nes_addr_mode_##mode)); op(nes_addr_mode_##mode); break;
+#define IS_OP_CODE(op, opcode) case opcode : DBG(get_op_str(#op, nes_addr_mode_imp)); op(nes_addr_mode_imp); break;
+#define IS_OP_CODE_MODE(op, opcode, mode) case opcode : DBG(get_op_str(#op, nes_addr_mode_##mode)); op(nes_addr_mode_##mode); break;
 
-#define IS_UNOFFICIAL_OP_CODE(op, opcode) case opcode : LOG(get_op_str(#op, nes_addr_mode_imp, false)); op(nes_addr_mode_imp); break;
-#define IS_UNOFFICIAL_OP_CODE_MODE(op, opcode, mode) case opcode : LOG(get_op_str(#op, nes_addr_mode_##mode, false)); op(nes_addr_mode_##mode); break;
+#define IS_UNOFFICIAL_OP_CODE(op, opcode) case opcode : DBG(get_op_str(#op, nes_addr_mode_imp, false)); op(nes_addr_mode_imp); break;
+#define IS_UNOFFICIAL_OP_CODE_MODE(op, opcode, mode) case opcode : DBG(get_op_str(#op, nes_addr_mode_##mode, false)); op(nes_addr_mode_##mode); break;
 
 void nes_cpu::exec_one_instruction()
 {
@@ -342,6 +343,8 @@ static void align(string &str, int loc)
 // C000  4C F5 C5  JMP $C5F5                       A:00 X:00 Y:00 P:24 SP:FD CYC:  0
 string nes_cpu::get_op_str(const char *op, nes_addr_mode addr_mode, bool is_official)
 {
+    nes_ppu_protect protect(_ppu);
+
     int operand_size = 0;
     switch (addr_mode)
     {
@@ -1004,10 +1007,18 @@ void nes_cpu::JMP(nes_addr_mode addr_mode)
 {
     assert(addr_mode == nes_addr_mode_abs_jmp || addr_mode == nes_addr_mode_ind_jmp);
 
+    uint16_t cur_loc = PC() - 1;
     PC() = decode_operand_addr(addr_mode);
-
+    
     // No impact to flags
     step_cpu(addr_mode == nes_addr_mode_abs_jmp ? 3 : 5);
+
+    if (cur_loc == PC())
+    {
+        // We are in a infinite loop - some test ROM does this to let you see the result screen
+        // For testing purpose at this point let's force exit the loop to let the test finish
+        _system->stop();
+    }
 }
 
 // JSR - Jump to subroutine

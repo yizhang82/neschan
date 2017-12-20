@@ -151,10 +151,13 @@ public :
         LOG("[NES_ROM] HEADER: Flags6 = 0x" << std::hex << (uint32_t) header.flag6);
         LOG("[NES_ROM] HEADER: Flags7 = 0x" << std::hex << (uint32_t) header.flag7);
         int mapper_id = ((header.flag6 & FLAG_6_LO_MAPPER_NUMBER_MASK) >> 4) + ((header.flag7 & FLAG_7_HI_MAPPER_NUMBER_MASK));
-        LOG("[NES_ROM] HEADER: Mapper_ID = " << mapper_id);
+        LOG("[NES_ROM] HEADER: Mapper_ID = " << std::dec << mapper_id);
         
         int prg_rom_size = header.prg_size * 0x4000;    // 16KB 
         int chr_rom_size = header.chr_size * 0x2000;    // 8KB
+
+        LOG("[NES_ROM] HEADER: PRG ROM Size = 0x" << std::hex << (uint32_t) header.flag6);
+        LOG("[NES_ROM] HEADER: CHR_ROM Size = 0x" << std::hex << (uint32_t) header.flag7);
 
         auto prg_rom = make_shared<vector<uint8_t>>(prg_rom_size);
         auto chr_rom = make_shared<vector<uint8_t>>(chr_rom_size);

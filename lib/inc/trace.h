@@ -82,11 +82,19 @@ static ostream& operator <<(ostream &os, const string &str)
 #define LOG(expr) tracer::get().stream() << expr << endl;
 
 // Optionally enabled in release and always on in debug
-#define TRACE(expr) if (tracer.get().enabled()) { LOG(expr); } 
+#define TRACE(expr) if (tracer::get().enabled()) { LOG(expr); } 
 
 // Debug-only trace
 #ifdef _DEBUG
-#define DIAG(expr) if (tracer.get().enabled()) { LOG(expr); } 
+#define DBG(expr) if (tracer::get().enabled()) { LOG(expr); } 
+#else
+#define DBG(expr) ;
+#endif
+
+// Only enabled if need to do special troubleshooting
+// These logging tends to be too frequent even for debugging builds
+#ifdef _NES_DIAG
+#define DIAG(expr) if (tracer::get().enabled()) { LOG(expr); } 
 #else
 #define DIAG(expr) ;
 #endif

@@ -15,8 +15,7 @@ class nes_ppu;
 
 enum nes_rom_exec_mode
 {
-    // Run the PRG ROM directly - useful for "simple" ROMs or emulator doesn't have full functionality
-    // such as PPU initialization sequence
+    // Run the PRG ROM directly - useful for ROM-based automation test path
     nes_rom_exec_mode_direct,
 
     // At power on, jump directly to the reset 'interrupt' handler which is effectively main
