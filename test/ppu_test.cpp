@@ -24,6 +24,7 @@ TEST_CASE("ppu_tests") {
         auto cpu = system.cpu();
         auto ppu = system.ppu();
 
+        CHECK(cpu->PC() == 0x8153);
         CHECK(ppu->read_byte(0x3f00) == 0x0);
         CHECK(ppu->read_byte(0x3f13) == 0x30);
     }

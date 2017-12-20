@@ -64,20 +64,29 @@ void nes_cpu::step_to(nes_cycle_t new_count)
 #define IS_UNOFFICIAL_OP_CODE(op, opcode) case opcode : DBG(get_op_str(#op, nes_addr_mode_imp, false)); op(nes_addr_mode_imp); break;
 #define IS_UNOFFICIAL_OP_CODE_MODE(op, opcode, mode) case opcode : DBG(get_op_str(#op, nes_addr_mode_##mode, false)); op(nes_addr_mode_##mode); break;
 
+void nes_cpu::NMI()
+{
+    TRACE("[NES_CPU] NMI interrupt");
+
+    // As per neswiki: NMI should set I(bit 5) but clear B(bit 4)
+    // http://wiki.nesdev.com/w/index.php/CPU_status_flag_behavior
+    push_word(PC());
+    push_byte(P() | 0x20);
+
+    step_cpu(7);
+    PC() = peek_word(NMI_HANDLER);
+}
+
 void nes_cpu::exec_one_instruction()
 {
     if (_nmi_pending)
     {
         // generate NMI
-        TRACE("[NES_CPU] NMI interrupt");
-
-        push_word(PC());
-        step_cpu(7);
-        PC() = peek_word(NMI_HANDLER);
+        NMI();
 
         _nmi_pending = false;
     }
-
+    else
     {
         // next op
         auto op_code = (nes_op_code)decode_byte();

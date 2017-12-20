@@ -34,12 +34,11 @@ using namespace std;
 // 1 to make ADC and SBC use BCD math (ignored in NES)
 #define PROCESSOR_STATUS_DECIMAL_MASK         0x8
 
-// S1/S2
 // Magical B flag set by interrupts and PHP/BRK when they push flags to stack.
 // bit 5 is always set to 1, and bit 4 is set to 1 if from PHP/BRK or 0 if from interrupt IRQ/NMI.
 // It only exists in copy of the stack but never in the CPU register itself
-#define PROCESSOR_STATUS_S1_MASK              0x10
-#define PROCESSOR_STATUS_S2_MASK              0x20
+#define PROCESSOR_STATUS_B_MASK              0x10
+#define PROCESSOR_STATUS_I_MASK              0x20
 #define PROCESSOR_STATUS_OVERFLOW_MASK        0x40
 #define PROCESSOR_STATUS_NEGATIVE_MASK        0x80
 
@@ -126,8 +125,8 @@ public :
 
     void set_decimal_flag(bool set) { set_flag(PROCESSOR_STATUS_DECIMAL_MASK, set); }
 
-    void set_s1_flag(bool set) { set_flag(PROCESSOR_STATUS_S1_MASK, set); }
-    void set_s2_flag(bool set) { set_flag(PROCESSOR_STATUS_S2_MASK, set); }
+    void set_I_flag(bool set) { set_flag(PROCESSOR_STATUS_I_MASK, set); }
+    void set_B_flag(bool set) { set_flag(PROCESSOR_STATUS_B_MASK, set); }
 
     void set_overflow_flag(bool set) { set_flag(PROCESSOR_STATUS_OVERFLOW_MASK, set); }
     bool is_overflow() { return _context.P & PROCESSOR_STATUS_OVERFLOW_MASK; }
@@ -158,7 +157,8 @@ public :
     {
         // stack grow top->down
         // no underflow/overflow detection
-        _mem->set_byte((_context.S--) + STACK_OFFSET, val);
+        _mem->set_byte(_context.S + STACK_OFFSET, val);
+        _context.S--;
     }
 
     void push_word(uint16_t val)
@@ -187,6 +187,7 @@ public :
 private :
     // execute on instruction, update processor status as needed, and move CPU internal cycle count
     void exec_one_instruction();
+    void NMI();
 
     uint8_t decode_byte()
     {

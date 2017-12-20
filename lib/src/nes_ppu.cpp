@@ -184,9 +184,13 @@ void nes_ppu::step_ppu(nes_ppu_cycle_t count)
         {
             _cur_scanline %= PPU_SCANLINE_COUNT;
             _frame_count++;
+            TRACE("[NES_PPU] FRAME " << std::dec << _frame_count << " ------ ");
 
             if (_frame_count > _stop_after_frame)
+            {
+                LOG("[NES_PPU] FRAME exceeding " << std::dec << _stop_after_frame << " -> stopping...");
                 _system->stop();
+            }
         }
         TRACE("[NES_PPU] SCANLINE " << std::dec << _cur_scanline << " ------ ");
     }
