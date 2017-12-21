@@ -44,6 +44,9 @@
     <ClInclude Include="inc\nes_cycle.h">
       <Filter>inc</Filter>
     </ClInclude>
+    <ClInclude Include="inc\nes_input.h">
+      <Filter>inc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp" />

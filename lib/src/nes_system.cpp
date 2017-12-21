@@ -40,7 +40,7 @@ void nes_system::run_program(vector<uint8_t> &&program, uint16_t addr)
     _ram->set_bytes(addr, program.data(), program.size());
     _cpu->PC() = addr;
 
-    main_loop();
+    test_loop();
 }
 
 void nes_system::load_rom(const char *rom_path, nes_rom_exec_mode mode)
@@ -64,17 +64,15 @@ void nes_system::run_rom(const char *rom_path, nes_rom_exec_mode mode)
 {
     load_rom(rom_path, mode);
 
-    main_loop();
+    test_loop();
 }
 
-void nes_system::main_loop()
+void nes_system::test_loop()
 {
     auto tick = nes_cycle_t(1);
     while (!_stop_requested)
     {
         step(tick);
-
-        // @TODO - add proper time synchronization/delay
     }
 }
 
@@ -82,6 +80,9 @@ void nes_system::step(nes_cycle_t count)
 {
     _master_cycle += count;
 
-    for (auto comp : _components)
-        comp->step_to(_master_cycle);
+    // Manually step the individual components instead of all components
+    // This saves a loop and also it's kinda stupid to step components that doesn't require stepping in the
+    // first place. Such as ram / controller, etc. 
+    _cpu->step_to(_master_cycle);
+    _ppu->step_to(_master_cycle);
 }

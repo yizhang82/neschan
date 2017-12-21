@@ -39,16 +39,12 @@ public :
     void power_on();
     void reset();
 
-    // Main emulation loop
-    void main_loop();
-
     // Stop the emulation engine and exit the main loop
     void stop() { _stop_requested = true; }
 
-    bool stop_requested() { return _stop_requested; }
     void run_program(vector<uint8_t> &&program, uint16_t addr);
-
     void run_rom(const char *rom_path, nes_rom_exec_mode mode);
+
     void load_rom(const char *rom_path, nes_rom_exec_mode mode);
    
     nes_cpu     *cpu() { return _cpu.get(); }
@@ -68,13 +64,20 @@ public :
     //
     void step(nes_cycle_t count);
 
+    bool stop_requested() { return _stop_requested; }
+
 private :
-    nes_cycle_t _master_cycle;
+    // Emulation loop that is only intended for tests 
+    void test_loop();
+
+private :
+    nes_cycle_t _master_cycle;              // keep count of current cycle
 
     unique_ptr<nes_cpu> _cpu;
     unique_ptr<nes_memory> _ram;
     unique_ptr<nes_ppu> _ppu;
 
     vector<nes_component *> _components;
-    bool _stop_requested;
+
+    bool _stop_requested;                   // useful for internal testing, or synchronization to rendering
 };

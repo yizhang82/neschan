@@ -13,6 +13,11 @@
 using namespace std;
 
 //
+// NES 6502 CPU 21.477272 MHz
+//
+#define NES_CPU_HZ 21477272
+
+//
 // All processor status codes for the status register
 // http://wiki.nesdev.com/w/index.php/CPU_status_flag_behavior
 //

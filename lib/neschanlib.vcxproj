@@ -153,6 +153,7 @@
   <ItemGroup>
     <ClInclude Include="inc\common.h" />
     <ClInclude Include="inc\nes_component.h" />
+    <ClInclude Include="inc\nes_input.h" />
     <ClInclude Include="inc\nes_cpu.h" />
     <ClInclude Include="inc\nes_cycle.h" />
     <ClInclude Include="inc\nes_memory.h" />
