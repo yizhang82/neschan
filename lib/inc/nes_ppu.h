@@ -91,6 +91,7 @@
 #define PPU_SPRITE_ATTR_BEHIND_BG 0x20
 
 class nes_system;
+class nes_mapper;
 
 using namespace std;
 
@@ -147,11 +148,32 @@ public :
 
     bool is_ready() { return _master_cycle > nes_ppu_cycle_t(29658); }
 
-    void stop_after_frame(int frame) { _stop_after_frame = frame; }
+    void stop_after_frame(uint32_t frame) 
+    {
+        _auto_stop = true;
+        _stop_after_frame = frame; 
+    }
 
     bool is_render_off() { return !_show_bg && !_show_sprites; }
 
     void load_mapper(shared_ptr<nes_mapper> &mapper);
+
+    uint8_t *frame_buffer()
+    {
+        // Return the completed buffer
+        if (_frame_buffer == _frame_buffer_1)
+            return _frame_buffer_2;
+        else
+            return _frame_buffer_1;
+    }
+
+    void swap_buffer()
+    {
+        if (_frame_buffer == _frame_buffer_1)
+            _frame_buffer = _frame_buffer_2;
+        else
+            _frame_buffer = _frame_buffer_1;
+    }
 
 public :
 
@@ -429,16 +451,19 @@ private :
     nes_cycle_t _master_cycle;
     nes_ppu_cycle_t _scanline_cycle;
     int _cur_scanline;
-    int _frame_count;
+    uint32_t _frame_count;
 
     bool _protect_register;             // protect PPU register from destructive reads temporarily
-    int _stop_after_frame;              // stop after X frames - useful for testing
+    uint32_t _stop_after_frame;              // stop after X frames - useful for testing
+    int _auto_stop;                     // stop after X frames - useful for testing
 
     // rendering states
     uint8_t _tile_index;                // tile index from name table - it consists of 
     uint8_t _tile_palette_bit32;        // palette index bit 3/2 from attribute table
     uint8_t _bitplane0;                 // bitplane0 of current tile from pattern table
-    uint8_t _frame_buffer[PPU_SCREEN_Y * PPU_SCREEN_X];   // entire frame buffer - only 4 bit is used
+    uint8_t *_frame_buffer;             // entire frame buffer - only 4 bit is used
+    uint8_t _frame_buffer_1[PPU_SCREEN_Y * PPU_SCREEN_X];   // entire frame buffer - only 4 bit is used
+    uint8_t _frame_buffer_2[PPU_SCREEN_Y * PPU_SCREEN_X];   // entire frame buffer - only 4 bit is used
     uint8_t _pixel_cycle[8];            // pixels in each cycle
 
     // sprite rendering

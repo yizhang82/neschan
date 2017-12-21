@@ -10,16 +10,12 @@ class tracer
 public :
     tracer()
     {
-        _enabled = false;
 
 #ifdef _DEBUG
         // TRACE always on in debug
         _enabled = true;
 #else
-        if (std::getenv("ENABLE_TRACE"))
-            _enabled = true;
-        else
-            _enabled = false;
+        _enabled = false;
 #endif
         _stream = std::make_unique<ofstream>();
     }

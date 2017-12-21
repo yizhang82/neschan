@@ -82,9 +82,11 @@ void nes_ppu::init()
 
     _protect_register = false;
     _frame_count = 0;
-    _stop_after_frame = 0;
+    _stop_after_frame = -1;
+    _auto_stop = false;
 
     _mask_oam_read = false;
+    _frame_buffer = _frame_buffer_1;
 }
 
 void nes_ppu::reset()
@@ -171,8 +173,8 @@ void nes_ppu::fetch_tile()
 
             _pixel_cycle[i] = get_palette_color(/* is_background = */ true, color_4_bit);
 
-            uint16_t frame_addr = uint16_t(cur_scanline) * PPU_SCREEN_Y + screen_tile_column * 8 + i;
-            if (frame_addr >= sizeof(_frame_buffer))
+            uint16_t frame_addr = uint16_t(cur_scanline) * PPU_SCREEN_X + screen_tile_column * 8 + i;
+            if (frame_addr >= sizeof(_frame_buffer_1))
                 continue;
             _frame_buffer[frame_addr] = _pixel_cycle[i];
         }
@@ -295,16 +297,18 @@ void nes_ppu::fetch_sprite(uint8_t sprite_id)
 
     // bit3/2 is shared for the entire sprite (just like background attribute table)
     uint8_t palette_bit32 = (sprite->attr & PPU_SPRITE_ATTR_BIT32_MASK) << 2;
-    for (int i = 0; i < 8; ++i)
+
+    // loop all bits - high -> low
+    for (int i = 7; i >= 0; --i)
     {
         uint8_t column_mask = 1 << i;
         uint8_t palette_index = palette_bit32 | ((bitplane1 & column_mask) >> i << 1) | ((bitplane0 & column_mask) >> i);
 
         uint8_t color = get_palette_color(/* is_background = */false, palette_index);
-        uint16_t frame_addr = (_cur_scanline - 1) * PPU_SCREEN_Y + sprite->pos_x;
-        if (frame_addr >= sizeof(_frame_buffer))
+        uint16_t frame_addr = (_cur_scanline - 1) * PPU_SCREEN_X + sprite->pos_x + (7 - i);
+        if (frame_addr >= sizeof(_frame_buffer_1))
         {
-            // bad sprite
+            // part of the sprite might be over
             continue;
         }
 
@@ -378,10 +382,11 @@ void nes_ppu::step_ppu(nes_ppu_cycle_t count)
         if (_cur_scanline >= PPU_SCANLINE_COUNT)
         {
             _cur_scanline %= PPU_SCANLINE_COUNT;
+            swap_buffer();
             _frame_count++;
             TRACE("[NES_PPU] FRAME " << std::dec << _frame_count << " ------ ");
 
-            if (_frame_count > _stop_after_frame)
+            if (_auto_stop && _frame_count > _stop_after_frame)
             {
                 LOG("[NES_PPU] FRAME exceeding " << std::dec << _stop_after_frame << " -> stopping...");
                 _system->stop();

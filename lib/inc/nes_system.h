@@ -49,13 +49,13 @@ public :
     void run_program(vector<uint8_t> &&program, uint16_t addr);
 
     void run_rom(const char *rom_path, nes_rom_exec_mode mode);
+    void load_rom(const char *rom_path, nes_rom_exec_mode mode);
    
     nes_cpu     *cpu() { return _cpu.get(); }
     nes_memory  *ram() { return _ram.get(); }
     nes_ppu     *ppu() { return _ppu.get(); }
 
-private :
-
+public :
     //
     // step <count> amount of cycles
     // We have a few options:

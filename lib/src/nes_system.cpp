@@ -43,7 +43,7 @@ void nes_system::run_program(vector<uint8_t> &&program, uint16_t addr)
     main_loop();
 }
 
-void nes_system::run_rom(const char *rom_path, nes_rom_exec_mode mode)
+void nes_system::load_rom(const char *rom_path, nes_rom_exec_mode mode)
 {
     auto mapper = nes_rom_loader::load_from(rom_path);
     _ram->load_mapper(mapper);
@@ -58,6 +58,11 @@ void nes_system::run_rom(const char *rom_path, nes_rom_exec_mode mode)
         assert(mode == nes_rom_exec_mode_reset);
         _cpu->PC() = ram()->get_word(RESET_HANDLER);
     }
+}
+
+void nes_system::run_rom(const char *rom_path, nes_rom_exec_mode mode)
+{
+    load_rom(rom_path, mode);
 
     main_loop();
 }
