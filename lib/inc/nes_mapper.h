@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include "nes_memory.h"
+#include "nes_ppu.h"
 #include "trace.h"
 #include <memory>
 #include <fstream>
@@ -27,7 +28,13 @@ public :
     // Called when mapper is loaded into memory
     // Useful when all you need is a one-time memcpy
     //
-    virtual void on_load(nes_memory &mem) = 0;
+    virtual void on_load_ram(nes_memory &mem) = 0;
+
+    //
+    // Called when mapper is loaded into PPU
+    // Useful when all you need is a one-time memcpy
+    //
+    virtual void on_load_ppu(nes_ppu &ppu) = 0;
 
     //
     // Returns various mapper related flags
@@ -66,7 +73,7 @@ public :
     // Called when mapper is loaded into memory
     // Useful when all you need is a one-time memcpy
     //
-    virtual void on_load(nes_memory &mem)
+    virtual void on_load_ram(nes_memory &mem)
     {
         // memcpy
         mem.set_bytes(0x8000, _prg_rom->data(), _prg_rom->size());
@@ -76,6 +83,17 @@ public :
             // "map" 0xC000 to 0x8000
             mem.set_bytes(0xc000, _prg_rom->data(), _prg_rom->size());
         }
+    }
+
+
+    //
+    // Called when mapper is loaded into PPU
+    // Useful when all you need is a one-time memcpy
+    //
+    virtual void on_load_ppu(nes_ppu &ppu)
+    {
+        // memcpy
+        ppu.write_bytes(0x0000, _chr_rom->data(), _chr_rom->size());
     }
 
     //

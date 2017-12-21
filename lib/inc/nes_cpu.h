@@ -146,6 +146,7 @@ public :
     uint8_t &S() { return _context.S; }
 
     void request_nmi() { _nmi_pending = true; };
+    void request_dma(uint16_t addr) { _dma_pending = true; _dma_addr = addr; }
 
 public :
     //
@@ -188,6 +189,7 @@ private :
     // execute on instruction, update processor status as needed, and move CPU internal cycle count
     void exec_one_instruction();
     void NMI();
+    void OAMDMA();
 
     uint8_t decode_byte()
     {
@@ -593,5 +595,7 @@ private :
     nes_cpu_context _context;
     nes_cycle_t     _cycle;
     bool            _nmi_pending;           // NMI interrupt pending from PPU vertical blanking
+    bool            _dma_pending;           // OAMDMA is requested from writing $4014
+    uint16_t        _dma_addr;              // starting address
 };
 

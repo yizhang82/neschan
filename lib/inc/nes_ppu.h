@@ -83,6 +83,13 @@
 
 #define PPU_SCANLINE_COUNT 262
 
+// Only max of 8 sprites can be drawn in one scanlinekkkkk
+#define PPU_ACTIVE_SPRITE_MAX 0x8
+#define PPU_SPRITE_MAX 64 
+
+#define PPU_SPRITE_ATTR_BIT32_MASK 0x3
+#define PPU_SPRITE_ATTR_BEHIND_BG 0x20
+
 class nes_system;
 
 using namespace std;
@@ -116,6 +123,8 @@ public :
         _vram = make_unique<uint8_t[]>(PPU_VRAM_SIZE);
         _oam = make_unique<uint8_t[]>(PPU_OAM_SIZE);
     }
+    
+    ~nes_ppu();
 
 public :
     //
@@ -132,12 +141,17 @@ public :
 
     void step_ppu(nes_ppu_cycle_t cycle);
     void fetch_tile();
+    void fetch_tile_pipeline();
+    void fetch_sprite_pipeline();
+    void fetch_sprite(uint8_t sprite_id);
 
     bool is_ready() { return _master_cycle > nes_ppu_cycle_t(29658); }
 
     void stop_after_frame(int frame) { _stop_after_frame = frame; }
 
     bool is_render_off() { return !_show_bg && !_show_sprites; }
+
+    void load_mapper(shared_ptr<nes_mapper> &mapper);
 
 public :
 
@@ -147,13 +161,27 @@ public :
     uint8_t read_byte(uint16_t addr)
     {
         redirect_addr(addr);
+
+        if (addr >= PPU_VRAM_SIZE)
+            return 0xff;
+
         return _vram[addr];
     }
 
     void write_byte(uint16_t addr, uint8_t val)
     {
         redirect_addr(addr);
+        
+        if (addr >= PPU_VRAM_SIZE)
+            return;
+
         _vram[addr] = val;
+    }
+
+    void write_bytes(uint16_t addr, uint8_t *src, size_t src_size)
+    {
+        redirect_addr(addr);
+        memcpy_s(_vram.get() + addr, PPU_VRAM_SIZE - addr, src, src_size);
     }
 
     void redirect_addr(uint16_t &addr)
@@ -261,6 +289,9 @@ public :
     void write_OAMDATA(uint8_t val)
     {
         write_latch(val);
+        if (_oam_addr >= PPU_OAM_SIZE)
+            return;
+
         _oam[_oam_addr] = val;
         _oam_addr++;
     }
@@ -268,6 +299,12 @@ public :
     uint8_t read_OAMDATA()
     {
         // @TODO - This exposes internal OAM access during rendering
+        if (_mask_oam_read)
+            return 0xff;
+
+        if (_oam_addr >= PPU_OAM_SIZE)
+            return 0xff;
+
         uint8_t val = _oam[_oam_addr];
         write_latch(val);
         return val;
@@ -316,15 +353,27 @@ public :
         return val;
     }
 
-    void write_OAMDMA(uint8_t val)
-    {
-        // @TODO - CPU is suspended and take 513/514 cycle
-        oam_dma((uint16_t(val) << 8));
-    }
+    void write_OAMDMA(uint8_t val);
 
     void oam_dma(uint16_t addr);
 
 private :
+    struct sprite_info
+    {
+        uint8_t pos_y;            // off by 1
+        uint8_t tile_index;
+        uint8_t attr;
+        uint8_t pos_x;
+    };
+
+    sprite_info *get_sprite(uint8_t sprite_id)
+    {
+        assert(sprite_id < PPU_SPRITE_MAX);
+
+        // sprite info resides in OAM memory and there are 64 sprites x 4 bytes each = 256 bytes
+        return &((sprite_info *)_oam.get())[sprite_id];
+    }
+
     uint8_t get_palette_color(bool is_background, uint8_t palette_index_4_bit)
     {
         // There is only one universal backdrop color 
@@ -332,9 +381,16 @@ private :
             return read_byte(0x3f00);
 
         uint16_t palette_addr = (is_background ? 0x3f00 : 0x3f10) | palette_index_4_bit;
-        return read_byte(0x3f00);
+        return read_byte(palette_addr);
     }
 
+    uint8_t read_pattern_table_column(uint8_t tile_index, uint8_t bitplane, uint8_t tile_row_index)
+    {
+        uint16_t tile_addr = _pattern_tbl_addr | ((tile_index & 0xf0) << 4) | ((tile_index & 0xf) << 4);
+
+        return read_byte(tile_addr | (bitplane << 3) | tile_row_index);
+    }
+   
 private :
     nes_system *_system;
 
@@ -375,14 +431,21 @@ private :
     int _cur_scanline;
     int _frame_count;
 
-    bool _protect_register;         // protect PPU register from destructive reads temporarily
-    int _stop_after_frame;          // stop after X frames - useful for testing
+    bool _protect_register;             // protect PPU register from destructive reads temporarily
+    int _stop_after_frame;              // stop after X frames - useful for testing
 
     // rendering states
     uint8_t _tile_index;                // tile index from name table - it consists of 
     uint8_t _tile_palette_bit32;        // palette index bit 3/2 from attribute table
-    uint16_t _tile_addr;                // address of current tile from pattern table 
     uint8_t _bitplane0;                 // bitplane0 of current tile from pattern table
-    uint8_t _frame_buffer[256 * 240];   // entire frame buffer - only 4 bit is used
+    uint8_t _frame_buffer[PPU_SCREEN_Y * PPU_SCREEN_X];   // entire frame buffer - only 4 bit is used
     uint8_t _pixel_cycle[8];            // pixels in each cycle
+
+    // sprite rendering
+    sprite_info _sprite_buf[PPU_ACTIVE_SPRITE_MAX];    // max 8 sprites
+    uint8_t _last_sprite_id;            // current max sprite ID
+    bool _mask_oam_read;                // OAM read is masked at certain sprite evaluation stage to always return FF
+    uint8_t _sprite_pos_y;              // last sprite Y read
+
+    shared_ptr<nes_mapper> _mapper;
 };

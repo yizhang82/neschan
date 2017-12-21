@@ -9,6 +9,8 @@ void nes_cpu::power_on(nes_system *system)
     _mem = system->ram();
     _ppu = system->ppu();
     _cycle = nes_cycle_t(0);
+    _nmi_pending = false;
+    _dma_pending = false;
 
     // @TODO - Simulate full power-on state
     // http://wiki.nesdev.com/w/index.php/CPU_power_up_state
@@ -77,6 +79,20 @@ void nes_cpu::NMI()
     PC() = peek_word(NMI_HANDLER);
 }
 
+void nes_cpu::OAMDMA()
+{
+    TRACE("[NES_CPU] OAMDMA at " << _dma_addr);
+
+    _system->ppu()->oam_dma(_dma_addr);
+
+    // The entire DMA takes 513 or 514 cycles
+    // http://wiki.nesdev.com/w/index.php/PPU_registers#OAMDMA
+    if (_cycle % 2 == nes_cpu_cycle_t(0))
+        step_cpu(514);
+    else
+        step_cpu(513);
+}
+
 void nes_cpu::exec_one_instruction()
 {
     if (_nmi_pending)
@@ -85,6 +101,12 @@ void nes_cpu::exec_one_instruction()
         NMI();
 
         _nmi_pending = false;
+    }
+    else if (_dma_pending)
+    {
+        OAMDMA();
+
+        _dma_pending = false;
     }
     else
     {
@@ -453,7 +475,7 @@ string nes_cpu::get_op_str(const char *op, nes_addr_mode addr_mode, bool is_offi
     int64_t cycle_count = cycle_count_in_scanline.count();
 
     string cycle_str = std::to_string(cycle_count);
-    int cycle_space = 3 - cycle_str.size();
+    size_t cycle_space = 3 - cycle_str.size();
     if (cycle_space > 0)
         msg.append(cycle_space, ' ');
     msg.append(cycle_str);

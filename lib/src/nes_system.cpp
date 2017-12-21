@@ -47,6 +47,8 @@ void nes_system::run_rom(const char *rom_path, nes_rom_exec_mode mode)
 {
     auto mapper = nes_rom_loader::load_from(rom_path);
     _ram->load_mapper(mapper);
+    _ppu->load_mapper(mapper);
+
     if (mode == nes_rom_exec_mode_direct)
     {
         _cpu->PC() = mapper->get_code_addr();

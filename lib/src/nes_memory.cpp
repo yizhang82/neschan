@@ -42,7 +42,7 @@ void nes_memory::load_mapper(shared_ptr<nes_mapper> &mapper)
     _mapper = nullptr;
 
     // Give mapper a chance to copy all the bytes needed
-    mapper->on_load(*this);
+    mapper->on_load_ram(*this);
 
     _mapper = mapper;
 }
