@@ -212,7 +212,7 @@ public :
         {
             addr -= 0x1000;
         }
-        else if ((addr & 0x3f00) == 0x3f00)
+        else if ((addr & 0xff00) == 0x3f00)
         {
             // mirror of palette table every 0x20 bytes
             addr &= 0xff1f;

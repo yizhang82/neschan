@@ -26,6 +26,9 @@ TEST_CASE("ppu_tests") {
 
         CHECK(cpu->PC() == 0x8153);
         CHECK(ppu->read_byte(0x3f00) == 0x0);
+        CHECK(ppu->read_byte(0x3f01) == 0x16);
+        CHECK(ppu->read_byte(0x3f02) == 0x2d);
+        CHECK(ppu->read_byte(0x3f03) == 0x30);
         CHECK(ppu->read_byte(0x3f13) == 0x30);
     }
 }

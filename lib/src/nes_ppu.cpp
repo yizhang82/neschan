@@ -50,7 +50,7 @@ void nes_ppu::init()
     // PPUCTRL data
     _name_tbl_addr = 0;
     _pattern_tbl_addr = 0;
-    _ppu_addr_inc = 0;
+    _ppu_addr_inc = 1;
     _vblank_nmi = false;
     _use_8x16_sprite = false;
 
