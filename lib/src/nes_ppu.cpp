@@ -265,7 +265,7 @@ void nes_ppu::fetch_sprite_pipeline()
         {
             // even cycle - write to secondary OAM
             // if in range
-            if (_sprite_pos_y <= _cur_scanline && _cur_scanline < _sprite_pos_y + 8)
+            if (_sprite_pos_y + 1 <= _cur_scanline && _cur_scanline < _sprite_pos_y + 1 + 8)
             {
                 if (_last_sprite_id >= PPU_ACTIVE_SPRITE_MAX)
                     _sprite_overflow = true;
@@ -303,7 +303,7 @@ void nes_ppu::fetch_sprite(uint8_t sprite_id)
     sprite_info *sprite = &_sprite_buf[sprite_id];
     uint8_t tile_index = sprite->tile_index;
 
-    uint8_t tile_row_index = (_cur_scanline - sprite->pos_y) % 8;
+    uint8_t tile_row_index = (_cur_scanline - sprite->pos_y - 1) % 8;
     if (sprite->attr & PPU_SPRITE_ATTR_VERTICAL_FLIP)
         tile_row_index = 7 - tile_row_index;
 
