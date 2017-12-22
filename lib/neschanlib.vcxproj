@@ -166,6 +166,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\nes_cpu.cpp" />
+    <ClCompile Include="src\nes_input.cpp" />
     <ClCompile Include="src\nes_memory.cpp" />
     <ClCompile Include="src\nes_ppu.cpp" />
     <ClCompile Include="src\nes_system.cpp" />

@@ -62,5 +62,8 @@
     <ClCompile Include="src\nes_ppu.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\nes_input.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

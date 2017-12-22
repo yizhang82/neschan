@@ -21,24 +21,25 @@ public :
         _ram = make_unique<uint8_t []>(RAM_SIZE);
     }
 
-    bool is_ppu_reg(uint16_t addr)
+    bool is_io_reg(uint16_t addr)
     {
         // $2000~$2007
         if ((addr & 0xfff8) == 0x2000)
             return true;
-        if (addr == 0x4014)
+        // $4000~401f
+        if ((addr & 0xffe0) == 0x4000)
             return true;
         return false;
     }
 
-    uint8_t read_ppu_reg(uint16_t addr);
-    void write_ppu_reg(uint16_t addr, uint8_t val);
+    uint8_t read_io_reg(uint16_t addr);
+    void write_io_reg(uint16_t addr, uint8_t val);
 
     uint8_t get_byte(uint16_t addr)
     {
         redirect_addr(addr);
-        if (is_ppu_reg(addr))
-            return read_ppu_reg(addr);
+        if (is_io_reg(addr))
+            return read_io_reg(addr);
 
         return _ram[addr];
     }
@@ -52,8 +53,8 @@ public :
     void set_byte(uint16_t addr, uint8_t value)
     {
         redirect_addr(addr);
-        if (is_ppu_reg(addr))
-            return write_ppu_reg(addr, value);
+        if (is_io_reg(addr))
+            return write_io_reg(addr, value);
 
         _ram[addr] = value;
     }
@@ -118,5 +119,6 @@ private :
 
     nes_system *_system;
     nes_ppu *_ppu;
+    nes_input *_input;
 };
 

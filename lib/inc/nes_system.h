@@ -12,6 +12,7 @@ class nes_cpu;
 class nes_memory;
 class nes_apu;
 class nes_ppu;
+class nes_input;
 
 enum nes_rom_exec_mode
 {
@@ -24,6 +25,7 @@ enum nes_rom_exec_mode
     // inspecting ROMs and using debugger from other emulators
     nes_rom_exec_mode_reset
 };
+
 
 //
 // The NES system hardware that manages all the invidual components - CPU, PPU, APU, RAM, etc
@@ -47,9 +49,10 @@ public :
 
     void load_rom(const char *rom_path, nes_rom_exec_mode mode);
    
-    nes_cpu     *cpu() { return _cpu.get(); }
-    nes_memory  *ram() { return _ram.get(); }
-    nes_ppu     *ppu() { return _ppu.get(); }
+    nes_cpu     *cpu()      { return _cpu.get();   }
+    nes_memory  *ram()      { return _ram.get();   }
+    nes_ppu     *ppu()      { return _ppu.get();   } 
+    nes_input   *input()    { return _input.get(); }
 
 public :
     //
@@ -76,6 +79,7 @@ private :
     unique_ptr<nes_cpu> _cpu;
     unique_ptr<nes_memory> _ram;
     unique_ptr<nes_ppu> _ppu;
+    unique_ptr<nes_input> _input;
 
     vector<nes_component *> _components;
 

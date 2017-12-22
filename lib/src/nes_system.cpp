@@ -11,10 +11,12 @@ nes_system::nes_system()
     _ram = make_unique<nes_memory>();
     _cpu = make_unique<nes_cpu>();
     _ppu = make_unique<nes_ppu>();
+    _input = make_unique<nes_input>();
 
     _components.push_back(_ram.get());
     _components.push_back(_cpu.get());
     _components.push_back(_ppu.get());
+    _components.push_back(_input.get());
 
     _stop_requested = false;
 }
@@ -86,3 +88,4 @@ void nes_system::step(nes_cycle_t count)
     _cpu->step_to(_master_cycle);
     _ppu->step_to(_master_cycle);
 }
+    
