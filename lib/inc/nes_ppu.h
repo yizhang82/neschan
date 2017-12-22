@@ -412,7 +412,7 @@ private :
     uint8_t read_pattern_table_column(bool sprite, uint8_t tile_index, uint8_t bitplane, uint8_t tile_row_index)
     {
         uint16_t tile_addr = sprite ? _sprite_pattern_tbl_addr : _bg_pattern_tbl_addr;
-        tile_addr |= ((tile_index & 0xf0) << 4) | ((tile_index & 0xf) << 4);
+        tile_addr |= (tile_index << 4);
 
         return read_byte(tile_addr | (bitplane << 3) | tile_row_index);
     }
