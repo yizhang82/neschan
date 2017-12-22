@@ -20,12 +20,7 @@ class nes_tracer
 public :
     nes_tracer()
     {
-
-#ifdef _DEBUG
-        _level = nes_tracer_level_detail;
-#else
-        _level = nes_tracer_level_minimal;
-#endif
+        _level = nes_tracer_level_quiet;
     }
 
     void init(const char *filename)
@@ -39,6 +34,11 @@ public :
             _stream = std::make_unique<ofstream>();
         }
 
+#ifdef _DEBUG
+        _level = nes_tracer_level_detail;
+#else
+        _level = nes_tracer_level_minimal;
+#endif
         _file_name = filename;
         _stream->open(_file_name);
     }
@@ -99,7 +99,7 @@ static ostream& operator <<(ostream &os, const string &str)
     return os;
 }
 
-#define INIT_TRACE(filename) nes_tracer::get().init(filename);
+#define INIT_TRACE(filename) nes_tracer::get().init(filename); 
 #define INIT_TRACE_LEVEL(filename, level) { nes_tracer::get().init(filename); nes_tracer::get().set_level(level); }
 
 #define INIT_TRACE_DIAG(filename) { nes_tracer::get().init(filename); nes_tracer::get().set_level(nes_tracer_level_diag); }

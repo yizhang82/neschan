@@ -114,6 +114,9 @@ public :
     virtual void step_to(nes_cycle_t count);
 
 public :
+
+    void stop_at_infinite_loop() { _stop_at_infinite_loop = true; }
+
     void set_carry_flag(bool set) { set_flag(PROCESSOR_STATUS_CARRY_MASK, set); }
     uint8_t get_carry() { return (_context.P & PROCESSOR_STATUS_CARRY_MASK); }
 
@@ -597,5 +600,6 @@ private :
     bool            _nmi_pending;           // NMI interrupt pending from PPU vertical blanking
     bool            _dma_pending;           // OAMDMA is requested from writing $4014
     uint16_t        _dma_addr;              // starting address
+    bool            _stop_at_infinite_loop; // stop at when the ROM starts infinite loop - useful for testing
 };
 

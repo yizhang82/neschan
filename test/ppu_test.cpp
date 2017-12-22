@@ -31,4 +31,17 @@ TEST_CASE("ppu_tests") {
         CHECK(ppu->read_byte(0x3f03) == 0x30);
         CHECK(ppu->read_byte(0x3f13) == 0x30);
     }
+    SUBCASE("sprite_ram") {
+        INIT_TRACE_DEBUG("neschan.ppu.sprite_ram.log");
+
+        system.power_on();
+
+        system.ppu()->stop_after_frame(10);
+
+        system.run_rom("./roms/blargg_ppu_tests/sprite_ram.nes", nes_rom_exec_mode_reset);
+
+        auto cpu = system.cpu();
+
+        CHECK(cpu->peek(0xf0) == 0x1);
+    }
 }

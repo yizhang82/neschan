@@ -1049,7 +1049,14 @@ void nes_cpu::JMP(nes_addr_mode addr_mode)
 {
     assert(addr_mode == nes_addr_mode_abs_jmp || addr_mode == nes_addr_mode_ind_jmp);
 
-    PC() = decode_operand_addr(addr_mode);
+    uint16_t old_pc = PC();
+    auto addr = decode_operand_addr(addr_mode);
+    if (addr == PC() - 1 && _stop_at_infinite_loop)
+    {
+        _system->stop();
+    }
+
+    PC() = addr;
     
     // No impact to flags
     step_cpu(addr_mode == nes_addr_mode_abs_jmp ? 3 : 5);

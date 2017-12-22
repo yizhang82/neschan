@@ -26,12 +26,23 @@ nes_ppu::~nes_ppu()
 void nes_ppu::write_OAMDMA(uint8_t val)
 {
     // @TODO - CPU is suspended and take 513/514 cycle
-    _system->cpu()->request_dma(uint16_t(val) << 8);
+    _system->cpu()->request_dma((uint16_t(val) << 8));
 }
 
 void nes_ppu::oam_dma(uint16_t addr)
 {
-    _system->ram()->get_bytes(_oam.get(), PPU_OAM_SIZE, addr, PPU_OAM_SIZE);
+    if (_oam_addr == 0)
+    {
+        // simple case - copy the 0x100 bytes directly
+        _system->ram()->get_bytes(_oam.get(), PPU_OAM_SIZE, addr, PPU_OAM_SIZE);
+    }
+    else
+    {
+        // the copy starts at _oam_addr and wraps around
+        int copy_before_wrap = 0x100 - _oam_addr;
+        _system->ram()->get_bytes(_oam.get() + _oam_addr, copy_before_wrap, addr, copy_before_wrap);
+        _system->ram()->get_bytes(_oam.get(), PPU_OAM_SIZE - copy_before_wrap, addr + copy_before_wrap, PPU_OAM_SIZE - copy_before_wrap);
+    }
 }
 
 void nes_ppu::load_mapper(shared_ptr<nes_mapper> &mapper)
@@ -353,7 +364,7 @@ void nes_ppu::step_to(nes_cycle_t count)
         {
             if (_cur_scanline == 241 && _scanline_cycle == nes_ppu_cycle_t(1))
             {
-                NES_TRACE3("[NES_PPU] SCANLINE = 241, VBlank BEGIN");
+                NES_TRACE4("[NES_PPU] SCANLINE = 241, VBlank BEGIN");
                 _vblank_started = true;
                 if (_vblank_nmi)
                 {
@@ -366,7 +377,7 @@ void nes_ppu::step_to(nes_cycle_t count)
         {
             if (_cur_scanline == 261 && _scanline_cycle == nes_ppu_cycle_t(1))
             {
-                NES_TRACE3("[NES_PPU] SCANLINE = 261, VBlank END");
+                NES_TRACE4("[NES_PPU] SCANLINE = 261, VBlank END");
                 _vblank_started = false;
             }
 
@@ -395,7 +406,7 @@ void nes_ppu::step_ppu(nes_ppu_cycle_t count)
             _cur_scanline %= PPU_SCANLINE_COUNT;
             swap_buffer();
             _frame_count++;
-            NES_TRACE3("[NES_PPU] FRAME " << std::dec << _frame_count << " ------ ");
+            NES_TRACE4("[NES_PPU] FRAME " << std::dec << _frame_count << " ------ ");
 
             if (_auto_stop && _frame_count > _stop_after_frame)
             {
@@ -403,6 +414,6 @@ void nes_ppu::step_ppu(nes_ppu_cycle_t count)
                 _system->stop();
             }
         }
-        NES_TRACE3("[NES_PPU] SCANLINE " << std::dec << (uint32_t) _cur_scanline << " ------ ");
+        NES_TRACE4("[NES_PPU] SCANLINE " << std::dec << (uint32_t) _cur_scanline << " ------ ");
     }
 }
