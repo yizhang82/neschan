@@ -10,7 +10,7 @@ using namespace std::chrono;
 // NES PPU 21.477272 / 4 MHz
 // @TODO - /4 is too fast so use /12. need to double check the math/facts
 //
-#define NES_CLOCK_HZ (21477272ul / 12)
+#define NES_CLOCK_HZ (21477272ul / 18)
 
 //
 // Given that 1 CPU cycle = 3 PPU cycle, we'll count in terms of PPU cycle
@@ -23,7 +23,7 @@ typedef duration<int64_t, std::ratio<3, 1>> nes_cpu_cycle_t;
 
 static nes_cycle_t ms_to_nes_cycle(uint32_t ms)
 {
-    return nes_cycle_t(NES_CLOCK_HZ * ms / 1000);
+    return nes_cycle_t(NES_CLOCK_HZ / 1000 * ms);
 }
 
 #define PPU_SCANLINE_CYCLE nes_ppu_cycle_t(341)  

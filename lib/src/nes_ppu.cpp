@@ -317,11 +317,13 @@ void nes_ppu::fetch_sprite(uint8_t sprite_id)
     for (int i = 7; i >= 0; --i)
     {
         uint8_t column_mask = 1 << i;
-        uint8_t palette_index = palette_bit32 | ((bitplane1 & column_mask) >> i << 1) | ((bitplane0 & column_mask) >> i);
+        uint8_t palette_bit01 = ((bitplane1 & column_mask) >> i << 1) | ((bitplane0 & column_mask) >> i);
+        if (palette_bit01 == 0)
+            continue;
+
+        uint8_t palette_index = palette_bit32 | palette_bit01;
 
         uint8_t color = get_palette_color(/* is_background = */false, palette_index);
-
-        // color 0 = transparent for sprites
         uint16_t frame_addr = _cur_scanline * PPU_SCREEN_X + sprite->pos_x;
         if (sprite->attr & PPU_SPRITE_ATTR_HORIZONTAL_FLIP)
             frame_addr += i;     // low -> high in horizontal flip
