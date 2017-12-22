@@ -369,12 +369,29 @@ public :
 
     uint8_t read_PPUDATA()
     {
-        uint8_t val = read_byte(_ppu_addr);
+        // use _vram_read_buf to implement VRAM delay reading buffer behavior
+        // First time read will read from buffer and then update the buffer
+        // This means all the reads are delayed by 1 read
+        uint8_t val = _vram_read_buf;
+        uint8_t new_val = read_byte(_ppu_addr);
 
-        if (!_protect_register) 
+        bool is_palette = ((_ppu_addr & 0xff00) == 0x3f00);
+        if (!_protect_register)
+        {
+            // for palette - the read buf is updated with the mirrored nametable address
+            if (is_palette)
+                _vram_read_buf = _vram[_ppu_addr - 0x1000];
+            else
+                _vram_read_buf = new_val;
             _ppu_addr += _ppu_addr_inc;
+        }
 
         write_latch(val);
+
+        // palette reads returns the correct data immediately
+        if (is_palette)
+            return new_val;
+
         return val;
     }
 
@@ -452,6 +469,9 @@ private :
 
     // PPUADDR
     uint16_t _ppu_addr;
+
+    // PPUDATA
+    uint8_t _vram_read_buf;             // delayed VRAM reads
 
     nes_cycle_t _master_cycle;
     nes_ppu_cycle_t _scanline_cycle;

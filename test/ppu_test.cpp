@@ -44,4 +44,17 @@ TEST_CASE("ppu_tests") {
 
         CHECK(cpu->peek(0xf0) == 0x1);
     }
+    SUBCASE("vram_access") {
+        INIT_TRACE_DEBUG("neschan.ppu.vram_access.log");
+
+        system.power_on();
+
+        system.ppu()->stop_after_frame(10);
+
+        system.run_rom("./roms/blargg_ppu_tests/vram_access.nes", nes_rom_exec_mode_reset);
+
+        auto cpu = system.cpu();
+
+        CHECK(cpu->peek(0xf0) == 0x1);
+    }
 }
