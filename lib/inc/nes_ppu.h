@@ -29,7 +29,7 @@
 
 // Sprite pattern table address for 8x8 sprites
 // 0: $0000; 1: $1000; Ignored for 8x16 mode
-#define PPUCTRL_SPRITE_PATTERN_TABLE_ADDR 0x8
+#define PPUCTRL_SPRITE_PATTERN_TABLE_ADDR_MASK 0x8
 
 // Background table pattern address
 // 0: $0000; 1: $1000
@@ -261,6 +261,7 @@ public :
         _name_tbl_addr = 0x2000 + uint16_t(name_table_addr_bit) * 0x400;
 
         _bg_pattern_tbl_addr = (val & PPUCTRL_BACKGROUND_PATTERN_TABLE_ADDRESS_MASK) << 0x8;
+        _sprite_pattern_tbl_addr = (val & PPUCTRL_SPRITE_PATTERN_TABLE_ADDR_MASK) << 0x8;
 
         _use_8x16_sprite = val & PPUCTRL_SPRITE_SIZE_MASK;
 
@@ -410,7 +411,7 @@ private :
 
     uint8_t read_pattern_table_column(bool sprite, uint8_t tile_index, uint8_t bitplane, uint8_t tile_row_index)
     {
-        uint16_t tile_addr = sprite ? 0x0000 : _bg_pattern_tbl_addr;
+        uint16_t tile_addr = sprite ? _sprite_pattern_tbl_addr : _bg_pattern_tbl_addr;
         tile_addr |= ((tile_index & 0xf0) << 4) | ((tile_index & 0xf) << 4);
 
         return read_byte(tile_addr | (bitplane << 3) | tile_row_index);
@@ -425,6 +426,7 @@ private :
     // PPUCTRL data
     uint16_t _name_tbl_addr;
     uint16_t _bg_pattern_tbl_addr;
+    uint16_t _sprite_pattern_tbl_addr;
     uint16_t _ppu_addr_inc;
     bool _vblank_nmi;
     bool _use_8x16_sprite;
