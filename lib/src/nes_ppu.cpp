@@ -357,8 +357,6 @@ void nes_ppu::step_to(nes_cycle_t count)
         }
         else if (_cur_scanline == 240)
         {
-            // idles - jump straight to the next scanline
-            step_ppu(PPU_SCANLINE_CYCLE - nes_ppu_cycle_t(1));
         }
         else if (_cur_scanline < 261)
         {
@@ -372,10 +370,15 @@ void nes_ppu::step_to(nes_cycle_t count)
                     _system->cpu()->request_nmi();
                 }
             }
+
+            // @HACK - account for a race where you have LDA $2002_PPUSTATUS and end of VBLANK at the same time
+            // This moves end of NMI a bit earlier to compensate for that
+            if (_cur_scanline == 260 && _scanline_cycle > nes_ppu_cycle_t(341 - 12))
+                _vblank_started = false;
         }
         else
         {
-            if (_cur_scanline == 261 && _scanline_cycle == nes_ppu_cycle_t(1))
+            if (_cur_scanline == 261 && _scanline_cycle == nes_ppu_cycle_t(0))
             {
                 NES_TRACE4("[NES_PPU] SCANLINE = 261, VBlank END");
                 _vblank_started = false;
