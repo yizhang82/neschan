@@ -6,3 +6,4 @@
 *.log
 *.bak
 dep
+.user

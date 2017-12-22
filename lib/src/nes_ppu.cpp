@@ -165,7 +165,8 @@ void nes_ppu::fetch_tile()
         uint8_t bitplane1 = read_pattern_table_column(_tile_index, /* bitplane = */ 1, screen_tile_row_index);
 
         // for each column - bitplane0/bitplane1 has entire 8 column
-        for (int i = 0; i < 8; ++i)
+        // high bit -> low bit
+        for (int i = 7; i >= 0; --i)
         {
             uint8_t column_mask = 1 << i;
             uint8_t tile_palette_bit01 = ((_bitplane0 & column_mask) >> i) | ((bitplane1 & column_mask) >> i << 1);
@@ -173,7 +174,7 @@ void nes_ppu::fetch_tile()
 
             _pixel_cycle[i] = get_palette_color(/* is_background = */ true, color_4_bit);
 
-            uint16_t frame_addr = uint16_t(cur_scanline) * PPU_SCREEN_X + screen_tile_column * 8 + i;
+            uint16_t frame_addr = uint16_t(cur_scanline) * PPU_SCREEN_X + screen_tile_column * 8 + (7 - i);
             if (frame_addr >= sizeof(_frame_buffer_1))
                 continue;
             _frame_buffer[frame_addr] = _pixel_cycle[i];

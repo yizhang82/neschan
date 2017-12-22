@@ -1218,14 +1218,6 @@ void nes_cpu::RTI(nes_addr_mode addr_mode)
 // RTS - Return from subroutine
 void nes_cpu::RTS(nes_addr_mode addr_mode) 
 {
-    // If RTS and SP = 0xfd (empty stack), terminate the loop
-    if (S() == 0xfd)
-    {
-        LOG("[NES_CPU] RTS when SP = $FD -> terminate");
-        _system->stop();
-        return;
-    }
-
     // See JSR - we pushed actual return address - 1
     uint16_t addr = pop_word() + 1;
     PC() = addr;

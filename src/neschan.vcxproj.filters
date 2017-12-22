@@ -27,9 +27,6 @@
     <ClInclude Include="neschan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="doctest.h">
-      <Filter>Resource Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
