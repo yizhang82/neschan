@@ -3,7 +3,7 @@
 #include <cstdint>
 #include "nes_memory.h"
 #include "nes_ppu.h"
-#include "trace.h"
+#include "nes_trace.h"
 #include <memory>
 #include <fstream>
 
@@ -145,7 +145,7 @@ public :
     static shared_ptr<nes_mapper> load_from(const char *path)
 
     {
-        LOG("[NES_ROM] Opening NES ROM file '" << path << "' ...");
+        NES_TRACE1("[NES_ROM] Opening NES ROM file '" << path << "' ...");
 
         assert(sizeof(ines_header) == 0x10);
 
@@ -159,23 +159,23 @@ public :
 
         if (header.flag6 & FLAG_6_HAS_TRAINER_MASK)
         {
-            LOG("[NES_ROM] HEADER: Trainer bytes 0x200 present.");
-            LOG("[NES_ROM] Skipping trainer bytes...");
+            NES_TRACE1("[NES_ROM] HEADER: Trainer bytes 0x200 present.");
+            NES_TRACE1("[NES_ROM] Skipping trainer bytes...");
 
             // skip the 512-byte trainer
             file.seekg(ios_base::cur, 0x200);
         }
 
-        LOG("[NES_ROM] HEADER: Flags6 = 0x" << std::hex << (uint32_t) header.flag6);
-        LOG("[NES_ROM] HEADER: Flags7 = 0x" << std::hex << (uint32_t) header.flag7);
+        NES_TRACE1("[NES_ROM] HEADER: Flags6 = 0x" << std::hex << (uint32_t) header.flag6);
+        NES_TRACE1("[NES_ROM] HEADER: Flags7 = 0x" << std::hex << (uint32_t) header.flag7);
         int mapper_id = ((header.flag6 & FLAG_6_LO_MAPPER_NUMBER_MASK) >> 4) + ((header.flag7 & FLAG_7_HI_MAPPER_NUMBER_MASK));
-        LOG("[NES_ROM] HEADER: Mapper_ID = " << std::dec << mapper_id);
+        NES_TRACE1("[NES_ROM] HEADER: Mapper_ID = " << std::dec << mapper_id);
         
         int prg_rom_size = header.prg_size * 0x4000;    // 16KB 
         int chr_rom_size = header.chr_size * 0x2000;    // 8KB
 
-        LOG("[NES_ROM] HEADER: PRG ROM Size = 0x" << std::hex << (uint32_t) prg_rom_size);
-        LOG("[NES_ROM] HEADER: CHR_ROM Size = 0x" << std::hex << (uint32_t) chr_rom_size);
+        NES_TRACE1("[NES_ROM] HEADER: PRG ROM Size = 0x" << std::hex << (uint32_t) prg_rom_size);
+        NES_TRACE1("[NES_ROM] HEADER: CHR_ROM Size = 0x" << std::hex << (uint32_t) chr_rom_size);
 
         auto prg_rom = make_shared<vector<uint8_t>>(prg_rom_size);
         auto chr_rom = make_shared<vector<uint8_t>>(chr_rom_size);

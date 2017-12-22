@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 #include "doctest.h"
-#include "trace.h"
+#include "nes_trace.h"
 #include "nes_mapper.h"
 #include "nes_system.h"
 
@@ -11,7 +11,7 @@ TEST_CASE("CPU tests") {
     nes_system system;
 
     SUBCASE("simple LDA/STA/ADD") {
-        INIT_TRACE("neschan.instrtest.simple.log");
+        INIT_TRACE_DEBUG("neschan.instrtest.simple.log");
 
         system.power_on();
 
@@ -38,7 +38,7 @@ TEST_CASE("CPU tests") {
         CHECK(cpu->Y() == 0x13);
     }
     SUBCASE("full instruction test") {
-        INIT_TRACE("neschan.instrtest.full.log");
+        INIT_TRACE_DEBUG("neschan.instrtest.full.log");
 
         system.power_on();
 
@@ -47,8 +47,8 @@ TEST_CASE("CPU tests") {
         auto cpu = system.cpu();
 
         // Check we've proceeded to the end of the ROM
-        CHECK(cpu->PC() == 0xc66f);
-        CHECK(cpu->S() == 0xfd);
+        CHECK(cpu->PC() == 0x0005);
+        CHECK(cpu->S() == 0xff);
 
         // Check the test is successful
         CHECK(cpu->peek(0x2) == 0);

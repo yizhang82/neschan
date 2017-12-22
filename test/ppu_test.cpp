@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 #include "doctest.h"
-#include "trace.h"
+#include "nes_trace.h"
 #include "nes_mapper.h"
 #include "nes_system.h"
 

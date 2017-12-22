@@ -159,7 +159,7 @@
     <ClInclude Include="inc\nes_memory.h" />
     <ClInclude Include="inc\nes_ppu.h" />
     <ClInclude Include="inc\nes_system.h" />
-    <ClInclude Include="inc\trace.h" />
+    <ClInclude Include="inc\nes_trace.h" />
     <ClInclude Include="inc\nes_mapper.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />

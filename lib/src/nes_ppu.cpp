@@ -96,13 +96,13 @@ void nes_ppu::reset()
 
 void nes_ppu::power_on(nes_system *system)
 {
-    LOG("[NES_PPU] POWER ON");
+    NES_TRACE1("[NES_PPU] POWER ON");
 
     init();
 
     _system = system;
 
-    TRACE("[NES_PPU] SCANLINE " << std::dec << _cur_scanline << " ------ ");
+    NES_TRACE3("[NES_PPU] SCANLINE " << std::dec << _cur_scanline << " ------ ");
 }
 
 // fetching tile for current line
@@ -353,7 +353,7 @@ void nes_ppu::step_to(nes_cycle_t count)
         {
             if (_cur_scanline == 241 && _scanline_cycle == nes_ppu_cycle_t(1))
             {
-                TRACE("[NES_PPU] SCANLINE = 241, VBlank BEGIN");
+                NES_TRACE3("[NES_PPU] SCANLINE = 241, VBlank BEGIN");
                 _vblank_started = true;
                 if (_vblank_nmi)
                 {
@@ -366,7 +366,7 @@ void nes_ppu::step_to(nes_cycle_t count)
         {
             if (_cur_scanline == 261 && _scanline_cycle == nes_ppu_cycle_t(1))
             {
-                TRACE("[NES_PPU] SCANLINE = 261, VBlank END");
+                NES_TRACE3("[NES_PPU] SCANLINE = 261, VBlank END");
                 _vblank_started = false;
             }
 
@@ -395,14 +395,14 @@ void nes_ppu::step_ppu(nes_ppu_cycle_t count)
             _cur_scanline %= PPU_SCANLINE_COUNT;
             swap_buffer();
             _frame_count++;
-            TRACE("[NES_PPU] FRAME " << std::dec << _frame_count << " ------ ");
+            NES_TRACE3("[NES_PPU] FRAME " << std::dec << _frame_count << " ------ ");
 
             if (_auto_stop && _frame_count > _stop_after_frame)
             {
-                LOG("[NES_PPU] FRAME exceeding " << std::dec << _stop_after_frame << " -> stopping...");
+                NES_TRACE1("[NES_PPU] FRAME exceeding " << std::dec << _stop_after_frame << " -> stopping...");
                 _system->stop();
             }
         }
-        TRACE("[NES_PPU] SCANLINE " << std::dec << (uint32_t) _cur_scanline << " ------ ");
+        NES_TRACE3("[NES_PPU] SCANLINE " << std::dec << (uint32_t) _cur_scanline << " ------ ");
     }
 }

@@ -20,9 +20,6 @@
     <ClInclude Include="inc\common.h">
       <Filter>inc</Filter>
     </ClInclude>
-    <ClInclude Include="inc\trace.h">
-      <Filter>inc</Filter>
-    </ClInclude>
     <ClInclude Include="inc\nes_memory.h">
       <Filter>inc</Filter>
     </ClInclude>
@@ -45,6 +42,9 @@
       <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="inc\nes_input.h">
+      <Filter>inc</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\nes_trace.h">
       <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>

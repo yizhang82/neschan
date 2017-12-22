@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "nes_cpu.h"
 #include "nes_system.h"
-#include "trace.h"
+#include "nes_trace.h"
 
 void nes_cpu::power_on(nes_system *system)
 {
@@ -32,7 +32,7 @@ void nes_cpu::step_to(nes_cycle_t new_count)
         exec_one_instruction();    
 }
 
-#define IS_ALU_OP_CODE_(op, offset, mode) case nes_op_code::op##_base + offset : DBG(get_op_str(#op, nes_addr_mode::nes_addr_mode_##mode)); op(nes_addr_mode::nes_addr_mode_##mode); break; 
+#define IS_ALU_OP_CODE_(op, offset, mode) case nes_op_code::op##_base + offset : NES_TRACE4(get_op_str(#op, nes_addr_mode::nes_addr_mode_##mode)); op(nes_addr_mode::nes_addr_mode_##mode); break; 
 #define IS_ALU_OP_CODE(op) \
     IS_ALU_OP_CODE_(op, 0x9, imm) \
     IS_ALU_OP_CODE_(op, 0x5, zp) \
@@ -52,7 +52,7 @@ void nes_cpu::step_to(nes_cycle_t new_count)
     IS_ALU_OP_CODE_(op, 0x1, ind_x) \
     IS_ALU_OP_CODE_(op, 0x11, ind_y)
 
-#define IS_RMW_OP_CODE_(op, opcode, offset, mode) case opcode + offset : DBG(get_op_str(#op, nes_addr_mode::nes_addr_mode_##mode)); op(nes_addr_mode::nes_addr_mode_##mode); break; 
+#define IS_RMW_OP_CODE_(op, opcode, offset, mode) case opcode + offset : NES_TRACE4(get_op_str(#op, nes_addr_mode::nes_addr_mode_##mode)); op(nes_addr_mode::nes_addr_mode_##mode); break; 
 #define IS_RMW_OP_CODE(op, opcode) \
     IS_RMW_OP_CODE_(op, opcode, 0x6, zp) \
     IS_RMW_OP_CODE_(op, opcode, 0xa, acc) \
@@ -60,15 +60,15 @@ void nes_cpu::step_to(nes_cycle_t new_count)
     IS_RMW_OP_CODE_(op, opcode, 0xe, abs) \
     IS_RMW_OP_CODE_(op, opcode, 0x1e, abs_x)
 
-#define IS_OP_CODE(op, opcode) case opcode : DBG(get_op_str(#op, nes_addr_mode_imp)); op(nes_addr_mode_imp); break;
-#define IS_OP_CODE_MODE(op, opcode, mode) case opcode : DBG(get_op_str(#op, nes_addr_mode_##mode)); op(nes_addr_mode_##mode); break;
+#define IS_OP_CODE(op, opcode) case opcode : NES_TRACE4(get_op_str(#op, nes_addr_mode_imp)); op(nes_addr_mode_imp); break;
+#define IS_OP_CODE_MODE(op, opcode, mode) case opcode : NES_TRACE4(get_op_str(#op, nes_addr_mode_##mode)); op(nes_addr_mode_##mode); break;
 
-#define IS_UNOFFICIAL_OP_CODE(op, opcode) case opcode : DBG(get_op_str(#op, nes_addr_mode_imp, false)); op(nes_addr_mode_imp); break;
-#define IS_UNOFFICIAL_OP_CODE_MODE(op, opcode, mode) case opcode : DBG(get_op_str(#op, nes_addr_mode_##mode, false)); op(nes_addr_mode_##mode); break;
+#define IS_UNOFFICIAL_OP_CODE(op, opcode) case opcode : NES_TRACE4(get_op_str(#op, nes_addr_mode_imp, false)); op(nes_addr_mode_imp); break;
+#define IS_UNOFFICIAL_OP_CODE_MODE(op, opcode, mode) case opcode : NES_TRACE4(get_op_str(#op, nes_addr_mode_##mode, false)); op(nes_addr_mode_##mode); break;
 
 void nes_cpu::NMI()
 {
-    TRACE("[NES_CPU] NMI interrupt");
+    NES_TRACE3("[NES_CPU] NMI interrupt");
 
     // As per neswiki: NMI should set I(bit 5) but clear B(bit 4)
     // http://wiki.nesdev.com/w/index.php/CPU_status_flag_behavior
@@ -81,7 +81,7 @@ void nes_cpu::NMI()
 
 void nes_cpu::OAMDMA()
 {
-    TRACE("[NES_CPU] OAMDMA at " << _dma_addr);
+    NES_TRACE3("[NES_CPU] OAMDMA at " << _dma_addr);
 
     _system->ppu()->oam_dma(_dma_addr);
 
@@ -340,7 +340,7 @@ void nes_cpu::exec_one_instruction()
         IS_UNOFFICIAL_OP_CODE_MODE(ISC, 0xff, abs_x)
 
         default:
-            LOG("[CPU] Unrecognized instruction or illegal instruction!");
+            NES_TRACE0("[NES_CPU] Unrecognized instruction or illegal instruction!");
             assert(false);
             break;
         }
