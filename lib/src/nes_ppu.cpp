@@ -49,7 +49,7 @@ void nes_ppu::init()
 {
     // PPUCTRL data
     _name_tbl_addr = 0;
-    _pattern_tbl_addr = 0;
+    _bg_pattern_tbl_addr = 0;
     _ppu_addr_inc = 1;
     _vblank_nmi = false;
     _use_8x16_sprite = false;
@@ -143,9 +143,9 @@ void nes_ppu::fetch_tile()
         // the result color byte is 2-bit (bit 3/2) for each quadrant
         // http://wiki.nesdev.com/w/index.php/PPU_attribute_tables
         uint16_t attr_tbl_addr = _name_tbl_addr + 0x3c0;
-        uint8_t color_byte = read_byte((attr_tbl_addr | ((screen_tile_row >> 2) << 3) | (screen_tile_column >> 2)));
+        uint8_t color_byte = read_byte((attr_tbl_addr + ((screen_tile_row >> 2) << 3) + (screen_tile_column >> 2)));
 
-        uint8_t _quadrant_id = (screen_tile_row & 0x2) + ((screen_tile_column & 0x2) >> 1);
+        uint8_t _quadrant_id = ((screen_tile_row & 0x1) << 1) + (screen_tile_column & 0x1);
         uint8_t color_bit32 = (color_byte & (0x3 << (_quadrant_id * 2))) >> (_quadrant_id * 2); 
         _tile_palette_bit32 = color_bit32 << 2;
     }
@@ -156,13 +156,13 @@ void nes_ppu::fetch_tile()
         // simply consists of indexes. It is quite convoluted by today's standards but it is 
         // just a space saving technique.
         // http://wiki.nesdev.com/w/index.php/PPU_pattern_tables
-        _bitplane0 = read_pattern_table_column(_tile_index, /* bitplane = */ 0, screen_tile_row_index);
+        _bitplane0 = read_pattern_table_column(/* sprite = */false, _tile_index, /* bitplane = */ 0, screen_tile_row_index);
     }
     else if (data_access_cycle == nes_ppu_cycle_t(6))
     {
         // fetch tilebitmap high
         // add one more cycle for memory access to skip directly to next access
-        uint8_t bitplane1 = read_pattern_table_column(_tile_index, /* bitplane = */ 1, screen_tile_row_index);
+        uint8_t bitplane1 = read_pattern_table_column(/* sprite = */false, _tile_index, /* bitplane = */ 1, screen_tile_row_index);
 
         // for each column - bitplane0/bitplane1 has entire 8 column
         // high bit -> low bit
@@ -291,10 +291,13 @@ void nes_ppu::fetch_sprite(uint8_t sprite_id)
 
     sprite_info *sprite = &_sprite_buf[sprite_id];
     uint8_t tile_index = sprite->tile_index;
-    uint8_t tile_row_index = (_cur_scanline - sprite->pos_y) % 8;
 
-    uint8_t bitplane0 = read_pattern_table_column(tile_index, 0, tile_row_index);
-    uint8_t bitplane1 = read_pattern_table_column(tile_index, 1, tile_row_index);
+    uint8_t tile_row_index = (_cur_scanline - sprite->pos_y) % 8;
+    if (sprite->attr & PPU_SPRITE_ATTR_VERTICAL_FLIP)
+        tile_row_index = 7 - tile_row_index;
+
+    uint8_t bitplane0 = read_pattern_table_column(/* sprite = */ true, tile_index, 0, tile_row_index);
+    uint8_t bitplane1 = read_pattern_table_column(/* sprite = */ true, tile_index, 1, tile_row_index);
 
     // bit3/2 is shared for the entire sprite (just like background attribute table)
     uint8_t palette_bit32 = (sprite->attr & PPU_SPRITE_ATTR_BIT32_MASK) << 2;
@@ -306,7 +309,14 @@ void nes_ppu::fetch_sprite(uint8_t sprite_id)
         uint8_t palette_index = palette_bit32 | ((bitplane1 & column_mask) >> i << 1) | ((bitplane0 & column_mask) >> i);
 
         uint8_t color = get_palette_color(/* is_background = */false, palette_index);
-        uint16_t frame_addr = (_cur_scanline - 1) * PPU_SCREEN_X + sprite->pos_x + (7 - i);
+
+        // color 0 = transparent for sprites
+        uint16_t frame_addr = _cur_scanline * PPU_SCREEN_X + sprite->pos_x;
+        if (sprite->attr & PPU_SPRITE_ATTR_HORIZONTAL_FLIP)
+            frame_addr += i;     // low -> high in horizontal flip
+        else
+            frame_addr += 7 - i; // high -> low as usual
+
         if (frame_addr >= sizeof(_frame_buffer_1))
         {
             // part of the sprite might be over

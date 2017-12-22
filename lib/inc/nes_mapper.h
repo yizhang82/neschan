@@ -174,8 +174,8 @@ public :
         int prg_rom_size = header.prg_size * 0x4000;    // 16KB 
         int chr_rom_size = header.chr_size * 0x2000;    // 8KB
 
-        LOG("[NES_ROM] HEADER: PRG ROM Size = 0x" << std::hex << (uint32_t) header.flag6);
-        LOG("[NES_ROM] HEADER: CHR_ROM Size = 0x" << std::hex << (uint32_t) header.flag7);
+        LOG("[NES_ROM] HEADER: PRG ROM Size = 0x" << std::hex << (uint32_t) prg_rom_size);
+        LOG("[NES_ROM] HEADER: CHR_ROM Size = 0x" << std::hex << (uint32_t) chr_rom_size);
 
         auto prg_rom = make_shared<vector<uint8_t>>(prg_rom_size);
         auto chr_rom = make_shared<vector<uint8_t>>(chr_rom_size);

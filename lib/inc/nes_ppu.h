@@ -89,6 +89,8 @@
 
 #define PPU_SPRITE_ATTR_BIT32_MASK 0x3
 #define PPU_SPRITE_ATTR_BEHIND_BG 0x20
+#define PPU_SPRITE_ATTR_HORIZONTAL_FLIP 0x40
+#define PPU_SPRITE_ATTR_VERTICAL_FLIP 0x80
 
 class nes_system;
 class nes_mapper;
@@ -218,8 +220,8 @@ public :
             addr &= 0xff1f;
 
             // mirror special case 0x3f10 = 0x3f00, 0x3f14 = 0x3f04, ...
-            if ((addr & 0x10) == 0x10)
-                addr &= 0xff0f;
+            if ((addr & 0xfff3) == 0x3f10)
+                addr &= 0x3f0f;
         }
     }
 
@@ -258,7 +260,7 @@ public :
         uint8_t name_table_addr_bit = val & PPUCTRL_BASE_NAME_TABLE_ADDR_MASK;
         _name_tbl_addr = 0x2000 + uint16_t(name_table_addr_bit) * 0x400;
 
-        _pattern_tbl_addr = (val & PPUCTRL_BACKGROUND_PATTERN_TABLE_ADDRESS_MASK) << 0x8;
+        _bg_pattern_tbl_addr = (val & PPUCTRL_BACKGROUND_PATTERN_TABLE_ADDRESS_MASK) << 0x8;
 
         _use_8x16_sprite = val & PPUCTRL_SPRITE_SIZE_MASK;
 
@@ -406,9 +408,10 @@ private :
         return read_byte(palette_addr);
     }
 
-    uint8_t read_pattern_table_column(uint8_t tile_index, uint8_t bitplane, uint8_t tile_row_index)
+    uint8_t read_pattern_table_column(bool sprite, uint8_t tile_index, uint8_t bitplane, uint8_t tile_row_index)
     {
-        uint16_t tile_addr = _pattern_tbl_addr | ((tile_index & 0xf0) << 4) | ((tile_index & 0xf) << 4);
+        uint16_t tile_addr = sprite ? 0x0000 : _bg_pattern_tbl_addr;
+        tile_addr |= ((tile_index & 0xf0) << 4) | ((tile_index & 0xf) << 4);
 
         return read_byte(tile_addr | (bitplane << 3) | tile_row_index);
     }
@@ -421,7 +424,7 @@ private :
 
     // PPUCTRL data
     uint16_t _name_tbl_addr;
-    uint16_t _pattern_tbl_addr;
+    uint16_t _bg_pattern_tbl_addr;
     uint16_t _ppu_addr_inc;
     bool _vblank_nmi;
     bool _use_8x16_sprite;
