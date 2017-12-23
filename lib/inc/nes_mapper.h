@@ -13,7 +13,10 @@ enum nes_mapper_flags
 {
     nes_mapper_flags_none,
     // This mapper can dynamically switch memory
-    nes_mapper_flags_dynamic_switching = 0x1
+    nes_mapper_flags_dynamic_switching = 0x1,
+
+    // Uses vertical mirroring
+    nes_mapper_flags_vertical_mirroring = 0x2
 };
 
 class nes_mapper
@@ -52,8 +55,8 @@ public :
 class nes_mapper_1 : public nes_mapper
 {
 public :
-    nes_mapper_1(shared_ptr<vector<uint8_t>> &prg_rom, shared_ptr<vector<uint8_t>> &chr_rom)
-        :_prg_rom(prg_rom), _chr_rom(chr_rom)
+    nes_mapper_1(shared_ptr<vector<uint8_t>> &prg_rom, shared_ptr<vector<uint8_t>> &chr_rom, bool vertical_mirroring)
+        :_prg_rom(prg_rom), _chr_rom(chr_rom), _vertical_mirroring(vertical_mirroring)
     {
 
     }
@@ -62,7 +65,7 @@ public :
     // PRG ROM base address. execution of code starts here
     //
     virtual uint16_t get_code_addr()
-    {
+    {        
         if (_prg_rom->size() == 0x4000)
             return 0xc000;
         else
@@ -101,6 +104,8 @@ public :
     //
     virtual nes_mapper_flags get_flags()
     {
+        if (_vertical_mirroring)
+            return nes_mapper_flags_vertical_mirroring;
         return nes_mapper_flags_none;
     }
 
@@ -114,9 +119,10 @@ public :
 private :
     shared_ptr<vector<uint8_t>> _prg_rom;
     shared_ptr<vector<uint8_t>> _chr_rom;
+    bool _vertical_mirroring;
 };
 
-#define FLAG_6_MIRRORING_MASK 0x1
+#define FLAG_6_USE_VERTICAL_MIRRORING_MASK 0x1
 #define FLAG_6_HAS_BATTERY_BACKED_PRG_RAM_MASK 0x2
 #define FLAG_6_HAS_TRAINER_MASK  0x4
 #define FLAG_6_USE_FOUR_SCREEN_VRAM_MASK 0x8
@@ -167,6 +173,16 @@ public :
         }
 
         NES_TRACE1("[NES_ROM] HEADER: Flags6 = 0x" << std::hex << (uint32_t) header.flag6);
+        bool vertical_mirroring = header.flag6 & FLAG_6_USE_VERTICAL_MIRRORING_MASK;
+        if (vertical_mirroring)
+        {
+            NES_TRACE1("    Mirroring: Vertical");
+        }
+        else
+        {
+            NES_TRACE1("    Mirroring: Horizontal");
+        }
+
         NES_TRACE1("[NES_ROM] HEADER: Flags7 = 0x" << std::hex << (uint32_t) header.flag7);
         int mapper_id = ((header.flag6 & FLAG_6_LO_MAPPER_NUMBER_MASK) >> 4) + ((header.flag7 & FLAG_7_HI_MAPPER_NUMBER_MASK));
         NES_TRACE1("[NES_ROM] HEADER: Mapper_ID = " << std::dec << mapper_id);
@@ -184,7 +200,7 @@ public :
         file.read((char *)chr_rom->data(), chr_rom->size());
 
         assert(mapper_id == 0);
-        shared_ptr<nes_mapper> mapper = make_shared<nes_mapper_1>(prg_rom, chr_rom);
+        shared_ptr<nes_mapper> mapper = make_shared<nes_mapper_1>(prg_rom, chr_rom, vertical_mirroring);
 
         file.close();
 

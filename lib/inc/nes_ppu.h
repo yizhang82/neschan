@@ -210,11 +210,7 @@ public :
 
     void redirect_addr(uint16_t &addr)
     {
-        if (addr >= 0x3000 && addr < 0x3f00)
-        {
-            addr -= 0x1000;
-        }
-        else if ((addr & 0xff00) == 0x3f00)
+        if ((addr & 0xff00) == 0x3f00)
         {
             // mirror of palette table every 0x20 bytes
             addr &= 0xff1f;
@@ -222,6 +218,19 @@ public :
             // mirror special case 0x3f10 = 0x3f00, 0x3f14 = 0x3f04, ...
             if ((addr & 0xfff3) == 0x3f10)
                 addr &= 0x3f0f;
+        }
+        else if ((addr & 0xf000) == 0x2000)
+        {
+            // name table mirroring
+            if (_vertical_mirroring)
+                addr &= 0xf7ff;     // $2000=$2800, $2400=$2c00
+            else
+                addr &= 0xfbff;     // $2000=$2400, $2800=$2c00
+        } 
+        else if (addr >= 0x3000)
+        {
+            // 0x3000~0x3f00 mirrors to 0x2000~0x2f00
+            addr -= 0x1000;
         }
     }
 
@@ -258,6 +267,7 @@ public :
         write_latch(val);
 
         uint8_t name_table_addr_bit = val & PPUCTRL_BASE_NAME_TABLE_ADDR_MASK;
+        _temp_ppu_addr = (_temp_ppu_addr & 0xf3ff) | ((val & PPUCTRL_BASE_NAME_TABLE_ADDR_MASK) << 10);
         _name_tbl_addr = 0x2000 + uint16_t(name_table_addr_bit) * 0x400;
 
         _bg_pattern_tbl_addr = (val & PPUCTRL_BACKGROUND_PATTERN_TABLE_ADDRESS_MASK) << 0x8;
@@ -297,7 +307,7 @@ public :
         {
             // clear various flags after reading
             _vblank_started = false;
-            _addr_latch = 0;
+            _addr_toggle = false;
         }
 
         write_latch(status);
@@ -342,22 +352,39 @@ public :
 
         write_latch(val);
 
-        _addr_latch = (_addr_latch + 1) % 2;
-        if (_addr_latch == 1)
+        _addr_toggle = !_addr_toggle;
+        if (_addr_toggle)
+        {
+            // first write
+            _temp_ppu_addr = (_temp_ppu_addr & 0xffe0) | (val >> 3);
+            _fine_x_scroll = val & 0x7;
             _scroll_x = val;
+        }
         else
-            _scroll_y = val;
+        {
+            _temp_ppu_addr = (_temp_ppu_addr & 0xc0ff) | ((val & 0x3f) << 8);
+            _ppu_addr = _temp_ppu_addr;
+            _scroll_y = val;        // second write
+        }
     }
 
     void write_PPUADDR(uint8_t val)
     {
         write_latch(val);
 
-        _addr_latch = (_addr_latch + 1) % 2;
-        if (_addr_latch == 1)
-            _ppu_addr = (_ppu_addr & 0x00ff) | (uint16_t(val) << 8);
+        _addr_toggle = !_addr_toggle;
+        if (_addr_toggle)
+        {
+            // first write
+            _temp_ppu_addr = (_temp_ppu_addr & 0x00ff) | (uint16_t(val) << 8);
+        }
         else
-            _ppu_addr = (_ppu_addr & 0xff00) | val;
+        {
+            // second write
+            // note that both PPUADDR(2006) and PPUSCROLL (2005) share the same _temp_ppu_addr
+            _temp_ppu_addr = (_temp_ppu_addr & 0xff00) | val;
+            _ppu_addr = _temp_ppu_addr;
+        }
     }
 
     void write_PPUDATA(uint8_t val)
@@ -380,7 +407,7 @@ public :
         {
             // for palette - the read buf is updated with the mirrored nametable address
             if (is_palette)
-                _vram_read_buf = _vram[_ppu_addr - 0x1000];
+                _vram_read_buf = read_byte(_ppu_addr - 0x1000);
             else
                 _vram_read_buf = new_val;
             _ppu_addr += _ppu_addr_inc;
@@ -463,12 +490,14 @@ private :
     uint8_t _oam_addr;
 
     // PPUSCROLL
-    uint8_t _addr_latch;
+    bool _addr_toggle;                  // the "w" register - see http://wiki.nesdev.com/w/index.php/PPU_scrolling
     uint8_t _scroll_x;
     uint8_t _scroll_y;
 
     // PPUADDR
-    uint16_t _ppu_addr;
+    uint16_t _ppu_addr;                 // the "v" register - see http://wiki.nesdev.com/w/index.php/PPU_scrolling
+    uint16_t _temp_ppu_addr;            // the "t" register - see http://wiki.nesdev.com/w/index.php/PPU_scrolling
+    uint8_t  _fine_x_scroll;            // the "x" register - see http://wiki.nesdev.com/w/index.php/PPU_scrolling 
 
     // PPUDATA
     uint8_t _vram_read_buf;             // delayed VRAM reads
@@ -498,4 +527,6 @@ private :
     uint8_t _sprite_pos_y;              // last sprite Y read
 
     shared_ptr<nes_mapper> _mapper;
+
+    bool _vertical_mirroring;
 };
