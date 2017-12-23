@@ -160,7 +160,8 @@ void nes_ppu::fetch_tile()
         uint16_t attr_tbl_addr = _name_tbl_addr + 0x3c0;
         uint8_t color_byte = read_byte((attr_tbl_addr + ((screen_tile_row >> 2) << 3) + (screen_tile_column >> 2)));
 
-        uint8_t _quadrant_id = ((screen_tile_row & 0x1) << 1) + (screen_tile_column & 0x1);
+        // each quadrant has 2x2 tile and each row/column has 4 tiles, so divide by 2 (& 0x2 is faster)
+        uint8_t _quadrant_id = (screen_tile_row & 0x2) + ((screen_tile_column & 0x2) >> 1);
         uint8_t color_bit32 = (color_byte & (0x3 << (_quadrant_id * 2))) >> (_quadrant_id * 2); 
         _tile_palette_bit32 = color_bit32 << 2;
     }
