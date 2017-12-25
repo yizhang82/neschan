@@ -143,19 +143,16 @@ void nes_ppu::fetch_tile()
     uint8_t screen_tile_column = (uint8_t) (scanline_render_cycle.count() + _scroll_x) / 8;
     uint8_t screen_tile_row = (cur_scanline + _scroll_y) / 8;
 
-    uint16_t name_tbl_addr = _name_tbl_addr;
+    uint16_t name_tbl_addr = (_ppu_addr & 0xfff) | 0x2000;
     if (screen_tile_column >= 32)
     {
         // X wrapping behavior
-        screen_tile_column -= 31;
-        name_tbl_addr = _name_tbl_addr ^ 0x0400;
+        screen_tile_column -= 32;
     }
     
     if (screen_tile_row >= 30)
     {
-        // Y wrapping behavior
         screen_tile_row -= 30;
-        name_tbl_addr = _name_tbl_addr ^ 0x0800;
     }
 
     // which of 8 rows witin a tile
@@ -165,7 +162,7 @@ void nes_ppu::fetch_tile()
     {
         // fetch nametable byte for current 8-pixel-tile
         // http://wiki.nesdev.com/w/index.php/PPU_nametables
-        _tile_index = read_byte(name_tbl_addr + (screen_tile_row << 5) + screen_tile_column);
+        _tile_index = read_byte(name_tbl_addr);
     }
     else if (data_access_cycle == nes_ppu_cycle_t(2))
     {
@@ -173,7 +170,7 @@ void nes_ppu::fetch_tile()
         // each attribute pixel is 4 quadrant of 2x2 tile (so total of 8x8) tile
         // the result color byte is 2-bit (bit 3/2) for each quadrant
         // http://wiki.nesdev.com/w/index.php/PPU_attribute_tables
-        uint16_t attr_tbl_addr = name_tbl_addr + 0x3c0;
+        uint16_t attr_tbl_addr = (name_tbl_addr & ~0x3ff) + 0x3c0;
         uint8_t color_byte = read_byte((attr_tbl_addr + ((screen_tile_row >> 2) << 3) + (screen_tile_column >> 2)));
 
         // each quadrant has 2x2 tile and each row/column has 4 tiles, so divide by 2 (& 0x2 is faster)
@@ -229,6 +226,16 @@ void nes_ppu::fetch_tile()
                 continue;
             _frame_buffer[frame_addr] = _pixel_cycle[i];
         }
+
+        // Wrap or increment
+        if ((_ppu_addr & 0x1f) == 0x1f)
+        {
+            _ppu_addr &= ~0x1f;
+        }
+        else
+        {
+            _ppu_addr++;
+        }
     }
 }
 
@@ -241,11 +248,45 @@ void nes_ppu::fetch_tile_pipeline()
     {
     }
     else if (_scanline_cycle < nes_ppu_cycle_t(257))
-    {
+    {        
         fetch_tile();
+
+        if (_scanline_cycle == nes_ppu_cycle_t(256))
+        {
+            if ((_ppu_addr & 0x7000) != 0x7000)
+            {
+                // Increase fine Y position (within tile)
+                _ppu_addr += 0x1000;
+            }
+            else
+            {
+                _ppu_addr &= ~0x7000;
+
+                // == row 29?
+                if ((_ppu_addr & 0x3e0) != 0x3a0)
+                {
+                     // Increase coarse Y position (next tile)
+                    _ppu_addr += 0x20;
+                }
+                else
+                {
+                    // wrap around
+                    _ppu_addr &= ~0x3e0;
+
+                    // switch to another vertical name table
+                    _ppu_addr ^= 0x0800;
+                }
+            }
+        }
     }
     else if (_scanline_cycle < nes_ppu_cycle_t(321))
     {
+        if (_scanline_cycle == nes_ppu_cycle_t(257))
+        {
+            // Reset horizontal position
+            _ppu_addr = (_ppu_addr & 0xfbe0) | (_temp_ppu_addr & ~0xfbe0);
+        }
+
         // fetch tile data for sprites on the next scanline
     }
     else if (_scanline_cycle < nes_ppu_cycle_t(337))
@@ -426,6 +467,11 @@ void nes_ppu::step_to(nes_cycle_t count)
             {
                 NES_TRACE4("[NES_PPU] SCANLINE = 261, VBlank END");
                 _vblank_started = false;
+
+                // Reset _ppu_addr to top-left of the screen
+                // But only do so when rendering is on (otherwise it will interfer with PPUDATA writes)
+                if (_show_bg || _show_sprites)
+                    _ppu_addr = _temp_ppu_addr;
             }
 
             // pre-render scanline
@@ -444,6 +490,7 @@ void nes_ppu::step_ppu(nes_ppu_cycle_t count)
 
     _master_cycle += nes_ppu_cycle_t(count);
     _scanline_cycle += nes_ppu_cycle_t(count);
+
     if (_scanline_cycle >= PPU_SCANLINE_CYCLE)
     {
         _scanline_cycle %= PPU_SCANLINE_CYCLE;

@@ -362,9 +362,10 @@ public :
         }
         else
         {
-            _temp_ppu_addr = (_temp_ppu_addr & 0xc0ff) | ((val & 0x3f) << 8);
+            // second write
+            _temp_ppu_addr = (_temp_ppu_addr & 0xc1f) | (uint16_t(val & 0xf8) << 2) | (uint16_t(val & 0x7) << 12);
             _ppu_addr = _temp_ppu_addr;
-            _scroll_y = val;        // second write
+            _scroll_y = val;
         }
     }
 
