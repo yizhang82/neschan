@@ -124,7 +124,7 @@ void nes_ppu::power_on(nes_system *system)
 void nes_ppu::fetch_tile()
 {
     auto scanline_render_cycle = nes_ppu_cycle_t(0);
-    uint8_t cur_scanline = _cur_scanline;
+    uint16_t cur_scanline = _cur_scanline;
     if (_scanline_cycle > nes_ppu_cycle_t(320))
     {
         // this is prefetch cycle 321~336 for next scanline
@@ -140,16 +140,32 @@ void nes_ppu::fetch_tile()
     auto data_access_cycle = scanline_render_cycle % 8;
 
     // which 8x8 tile in the screen it is 
-    uint8_t screen_tile_column = (uint8_t) scanline_render_cycle.count() / 8;
-    uint8_t screen_tile_row = cur_scanline / 8;
+    uint8_t screen_tile_column = (uint8_t) (scanline_render_cycle.count() + _scroll_x) / 8;
+    uint8_t screen_tile_row = (cur_scanline + _scroll_y) / 8;
+
+    uint16_t name_tbl_addr = _name_tbl_addr;
+    if (screen_tile_column >= 32)
+    {
+        // X wrapping behavior
+        screen_tile_column -= 31;
+        name_tbl_addr = _name_tbl_addr ^ 0x0400;
+    }
+    
+    if (screen_tile_row >= 30)
+    {
+        // Y wrapping behavior
+        screen_tile_row -= 30;
+        name_tbl_addr = _name_tbl_addr ^ 0x0800;
+    }
 
     // which of 8 rows witin a tile
-    uint8_t screen_tile_row_index = cur_scanline % 8;
+    uint8_t screen_tile_row_index = (cur_scanline + _scroll_y) % 8;
+
     if (data_access_cycle == nes_ppu_cycle_t(0))
     {
         // fetch nametable byte for current 8-pixel-tile
         // http://wiki.nesdev.com/w/index.php/PPU_nametables
-        _tile_index = read_byte(_name_tbl_addr + (screen_tile_row << 5) + screen_tile_column);
+        _tile_index = read_byte(name_tbl_addr + (screen_tile_row << 5) + screen_tile_column);
     }
     else if (data_access_cycle == nes_ppu_cycle_t(2))
     {
@@ -157,7 +173,7 @@ void nes_ppu::fetch_tile()
         // each attribute pixel is 4 quadrant of 2x2 tile (so total of 8x8) tile
         // the result color byte is 2-bit (bit 3/2) for each quadrant
         // http://wiki.nesdev.com/w/index.php/PPU_attribute_tables
-        uint16_t attr_tbl_addr = _name_tbl_addr + 0x3c0;
+        uint16_t attr_tbl_addr = name_tbl_addr + 0x3c0;
         uint8_t color_byte = read_byte((attr_tbl_addr + ((screen_tile_row >> 2) << 3) + (screen_tile_column >> 2)));
 
         // each quadrant has 2x2 tile and each row/column has 4 tiles, so divide by 2 (& 0x2 is faster)
@@ -182,7 +198,25 @@ void nes_ppu::fetch_tile()
 
         // for each column - bitplane0/bitplane1 has entire 8 column
         // high bit -> low bit
-        for (int i = 7; i >= 0; --i)
+        int start_bit = 7;
+        int end_bit = 0;
+        
+        int x_offset = _scroll_x % 8;
+        int tile = (scanline_render_cycle.count() - x_offset - /* current_access_cycle */ 6) % 8;
+        if (x_offset > 0)
+        {
+            if (tile == 0)
+            {
+                start_bit = 7 - x_offset;
+            }
+            else if (tile == 31)
+            {
+                // last tile
+                end_bit = x_offset - 1;
+            }
+        }
+
+        for (int i = start_bit; i >= end_bit; --i)
         {
             uint8_t column_mask = 1 << i;
             uint8_t tile_palette_bit01 = ((_bitplane0 & column_mask) >> i) | ((bitplane1 & column_mask) >> i << 1);
@@ -316,17 +350,19 @@ void nes_ppu::fetch_sprite(uint8_t sprite_id)
     uint8_t bitplane1 = read_pattern_table_column(/* sprite = */ true, tile_index, 1, tile_row_index);
 
     // bit3/2 is shared for the entire sprite (just like background attribute table)
-    uint8_t palette_bit32 = (sprite->attr & PPU_SPRITE_ATTR_BIT32_MASK) << 2;
+    uint8_t palette_index_bit32 = (sprite->attr & PPU_SPRITE_ATTR_BIT32_MASK) << 2;
 
     // loop all bits - high -> low
     for (int i = 7; i >= 0; --i)
     {
         uint8_t column_mask = 1 << i;
-        uint8_t palette_bit01 = ((bitplane1 & column_mask) >> i << 1) | ((bitplane0 & column_mask) >> i);
-        if (palette_bit01 == 0)
+        uint8_t palette_index_bit01 = ((bitplane1 & column_mask) >> i << 1) | ((bitplane0 & column_mask) >> i);
+
+        // palette 0 is always background
+        if (palette_index_bit01 == 0)
             continue;
 
-        uint8_t palette_index = palette_bit32 | palette_bit01;
+        uint8_t palette_index = palette_index_bit32 | palette_index_bit01;
 
         uint8_t color = get_palette_color(/* is_background = */false, palette_index);
         uint16_t frame_addr = _cur_scanline * PPU_SCREEN_X + sprite->pos_x;
@@ -343,7 +379,8 @@ void nes_ppu::fetch_sprite(uint8_t sprite_id)
 
         if (sprite->attr & PPU_SPRITE_ATTR_BEHIND_BG)
         {
-            if (_frame_buffer[frame_addr] != 0)
+            // skip unless it is background color 0
+            if (_frame_buffer[frame_addr] !=  get_palette_color(/* is_background = */ true, 0))
                 continue;
         }
 

@@ -519,6 +519,7 @@ private :
     uint8_t _frame_buffer_1[PPU_SCREEN_Y * PPU_SCREEN_X];   // entire frame buffer - only 4 bit is used
     uint8_t _frame_buffer_2[PPU_SCREEN_Y * PPU_SCREEN_X];   // entire frame buffer - only 4 bit is used
     uint8_t _pixel_cycle[8];            // pixels in each cycle
+    uint8_t _shift_reg;                 // which bit do we care about
 
     // sprite rendering
     sprite_info _sprite_buf[PPU_ACTIVE_SPRITE_MAX];    // max 8 sprites
