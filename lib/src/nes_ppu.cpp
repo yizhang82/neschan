@@ -313,6 +313,7 @@ void nes_ppu::fetch_sprite_pipeline()
     if (_scanline_cycle == nes_ppu_cycle_t(0))
     {
         _last_sprite_id = 0;
+        _has_sprite_0 = false;
         memset(_sprite_buf, 0xff, sizeof(_sprite_buf));
         _sprite_overflow = false;
     }
@@ -347,6 +348,9 @@ void nes_ppu::fetch_sprite_pipeline()
             // if in range
             if (_sprite_pos_y + 1 <= _cur_scanline && _cur_scanline < _sprite_pos_y + 1 + 8)
             {
+                if (sprite_id == 0)
+                    _has_sprite_0 = true;
+
                 if (_last_sprite_id >= PPU_ACTIVE_SPRITE_MAX)
                     _sprite_overflow = true;
                 else
@@ -418,11 +422,22 @@ void nes_ppu::fetch_sprite(uint8_t sprite_id)
             continue;
         }
 
-        if (sprite->attr & PPU_SPRITE_ATTR_BEHIND_BG)
+        bool is_sprite_0 = (_has_sprite_0 && sprite_id == 0);
+        bool behind_bg = sprite->attr & PPU_SPRITE_ATTR_BEHIND_BG;
+        if (behind_bg || is_sprite_0)
         {
-            // skip unless it is background color 0
-            if (_frame_buffer[frame_addr] !=  get_palette_color(/* is_background = */ true, 0))
+            bool overlap = _frame_buffer[frame_addr] != get_palette_color(/* is_background = */ true, 0);
+            if (is_sprite_0)
+            {
+                // sprite 0 hit detection
+                _sprite_0_hit = true;
+            }
+
+            if (behind_bg)
+            {
+                // behind background
                 continue;
+            }
         }
 
         _frame_buffer[frame_addr] = color;
@@ -463,15 +478,22 @@ void nes_ppu::step_to(nes_cycle_t count)
         }
         else
         {
-            if (_cur_scanline == 261 && _scanline_cycle == nes_ppu_cycle_t(0))
+            if (_cur_scanline == 261)
             {
-                NES_TRACE4("[NES_PPU] SCANLINE = 261, VBlank END");
-                _vblank_started = false;
+                if (_scanline_cycle == nes_ppu_cycle_t(0))
+                {
+                    NES_TRACE4("[NES_PPU] SCANLINE = 261, VBlank END");
+                    _vblank_started = false;
 
-                // Reset _ppu_addr to top-left of the screen
-                // But only do so when rendering is on (otherwise it will interfer with PPUDATA writes)
-                if (_show_bg || _show_sprites)
-                    _ppu_addr = _temp_ppu_addr;
+                    // Reset _ppu_addr to top-left of the screen
+                    // But only do so when rendering is on (otherwise it will interfer with PPUDATA writes)
+                    if (_show_bg || _show_sprites)
+                        _ppu_addr = _temp_ppu_addr;
+                }
+                else if (_scanline_cycle == nes_ppu_cycle_t(1))
+                {
+                    _sprite_0_hit = false;
+                }
             }
 
             // pre-render scanline

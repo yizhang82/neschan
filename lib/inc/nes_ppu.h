@@ -525,6 +525,7 @@ private :
     // sprite rendering
     sprite_info _sprite_buf[PPU_ACTIVE_SPRITE_MAX];    // max 8 sprites
     uint8_t _last_sprite_id;            // current max sprite ID
+    bool _has_sprite_0;                 // first active sprite is sprite 0 - needed in sprite 0 hit detection
     bool _mask_oam_read;                // OAM read is masked at certain sprite evaluation stage to always return FF
     uint8_t _sprite_pos_y;              // last sprite Y read
 
