@@ -287,7 +287,7 @@ void nes_ppu::fetch_tile_pipeline()
         {
             // Reset horizontal position
             // NNYY YYYX XXXX
-            _ppu_addr = (_ppu_addr & 0xf3e0) | (_temp_ppu_addr & ~0xf3e0);
+            _ppu_addr = (_ppu_addr & 0xffe0) | (_temp_ppu_addr & ~0xffe0);
         }
 
         // fetch tile data for sprites on the next scanline
@@ -430,16 +430,19 @@ void nes_ppu::fetch_sprite(uint8_t sprite_id)
         if (behind_bg || is_sprite_0)
         {
             bool overlap = _frame_buffer[frame_addr] != get_palette_color(/* is_background = */ true, 0);
-            if (is_sprite_0)
+            if (overlap)
             {
-                // sprite 0 hit detection
-                _sprite_0_hit = true;
-            }
+                if (is_sprite_0)
+                {
+                    // sprite 0 hit detection
+                    _sprite_0_hit = true;
+                }
 
-            if (behind_bg)
-            {
-                // behind background
-                continue;
+                if (behind_bg)
+                {
+                    // behind background
+                    continue;
+                }
             }
         }
 
