@@ -5,6 +5,7 @@
 
 #include "nes_component.h"
 #include "nes_cycle.h"
+#include <nes_trace.h>
 
 // PPU has its own separate 16KB memory address space
 // http://wiki.nesdev.com/w/index.php/PPU_memory_map
@@ -347,6 +348,8 @@ public :
 
     void write_PPUSCROLL(uint8_t val)
     {
+        NES_TRACE4("[NES_PPU] write_PPUSCROLL(Val=" << std::hex << (uint32_t)val << ")");
+
         // Ignore write before PPU is ready
         if (!is_ready()) return;
 
@@ -370,6 +373,7 @@ public :
 
     void write_PPUADDR(uint8_t val)
     {
+        NES_TRACE4("[NES_PPU] write_PPUADDR(Val=" << std::hex << (uint32_t)val << ")");
         write_latch(val);
 
         _addr_toggle = !_addr_toggle;
@@ -390,6 +394,7 @@ public :
 
     void write_PPUDATA(uint8_t val)
     {
+        NES_TRACE4("[NES_PPU] write_PPUDATA(Addr=" << std::hex << _ppu_addr << ", Val=" << (uint32_t)val << ")");
         write_latch(val);
         write_byte(_ppu_addr, val);
         _ppu_addr += _ppu_addr_inc;

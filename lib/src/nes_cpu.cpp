@@ -711,7 +711,7 @@ void nes_cpu::_ADC(uint8_t val)
 
     // flags
     set_overflow_flag(is_sign_overflow(old_val, val, A()));
-    set_carry_flag(old_val > A());
+    set_carry_flag(old_val > A() || val > A());
     calc_alu_flag(A());
 }
 

@@ -224,6 +224,10 @@ int main(int argc, char *argv[])
             delta_ticks = 1;
         auto cpu_cycles = ms_to_nes_cycle((double) delta_ticks * 1000 / count_per_second);
 
+        // Avoids a scenario where the loop keeps getting longer
+        if (cpu_cycles > nes_cycle_t(NES_CLOCK_HZ))
+            cpu_cycles = nes_cycle_t(NES_CLOCK_HZ);
+
         for (nes_cycle_t i = nes_cycle_t(0); i < cpu_cycles; ++i)
             system.step(nes_cycle_t(1));
 
