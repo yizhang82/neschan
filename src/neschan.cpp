@@ -21,6 +21,53 @@ public :
     {}
 };
 
+class sdl_keyboard_controller : public nes_user_input
+{
+public:
+    sdl_keyboard_controller()
+    {
+    }
+
+    virtual nes_button_flags poll_status()
+    {
+        return sdl_keyboard_controller::get_status();
+    }
+
+    ~sdl_keyboard_controller()
+    {
+    }
+
+public:
+    static nes_button_flags get_status()
+    {
+        const Uint8 *states = SDL_GetKeyboardState(NULL);
+
+        uint8_t flags = 0;
+        for (int i = 0; i < 8; i++)
+        {
+            flags <<= 1;
+            flags |= states[s_buttons[i]];
+        }
+
+        return (nes_button_flags)flags;
+    }
+
+private:
+
+    static const SDL_Scancode s_buttons[];
+};
+
+const SDL_Scancode sdl_keyboard_controller::s_buttons[] = {
+    SDL_SCANCODE_J,
+    SDL_SCANCODE_L,
+    SDL_SCANCODE_SPACE,
+    SDL_SCANCODE_RETURN,
+    SDL_SCANCODE_W,
+    SDL_SCANCODE_S,
+    SDL_SCANCODE_A,
+    SDL_SCANCODE_D
+};
+
 class sdl_game_controller : public nes_user_input
 {
 public :
@@ -54,6 +101,12 @@ public :
         {
             flags <<= 1;
             flags |= SDL_GameControllerGetButton(_controller, s_buttons[i]);
+        }
+
+        if (_id == 0)
+        {
+            // Also poll keyboard as well for main player
+            flags |= sdl_keyboard_controller::get_status();
         }
 
         return (nes_button_flags)flags;
@@ -128,10 +181,17 @@ int main(int argc, char *argv[])
 
     int num_joysticks = SDL_NumJoysticks();
     NES_LOG("[NESCHAN] " << num_joysticks << " JoySticks detected.");
-    for (int i = 0; i < num_joysticks; i++)
+    if (num_joysticks == 0)
     {
-        if (i < NES_MAX_PLAYER)
-            system.input()->register_input(i, std::make_shared<sdl_game_controller>(i));
+        system.input()->register_input(0, std::make_shared<sdl_keyboard_controller>());
+    }
+    else
+    {
+        for (int i = 0; i < num_joysticks; i++)
+        {
+            if (i < NES_MAX_PLAYER)
+                system.input()->register_input(i, std::make_shared<sdl_game_controller>(i));
+        }
     }
 
     SDL_Event sdlEvent;

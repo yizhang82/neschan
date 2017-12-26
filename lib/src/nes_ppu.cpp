@@ -286,6 +286,7 @@ void nes_ppu::fetch_tile_pipeline()
         if (_scanline_cycle == nes_ppu_cycle_t(257))
         {
             // Reset horizontal position
+            // NNYY YYYX XXXX
             _ppu_addr = (_ppu_addr & 0xf3e0) | (_temp_ppu_addr & ~0xf3e0);
         }
 
