@@ -170,8 +170,9 @@ void nes_ppu::fetch_tile()
         // each attribute pixel is 4 quadrant of 2x2 tile (so total of 8x8) tile
         // the result color byte is 2-bit (bit 3/2) for each quadrant
         // http://wiki.nesdev.com/w/index.php/PPU_attribute_tables
-        uint16_t attr_tbl_addr = (name_tbl_addr & ~0x3ff) + 0x3c0;
-        uint8_t color_byte = read_byte((attr_tbl_addr + ((screen_tile_row >> 2) << 3) + (screen_tile_column >> 2)));
+        // http://wiki.nesdev.com/w/index.php/PPU_scrolling#Wrapping_around
+        uint16_t attr_tbl_addr = 0x23c0 | (_ppu_addr & 0x0c00) | ((_ppu_addr >> 4) & 0x38) | ((_ppu_addr >> 2) & 0x7);
+        uint8_t color_byte = read_byte(attr_tbl_addr);
 
         // each quadrant has 2x2 tile and each row/column has 4 tiles, so divide by 2 (& 0x2 is faster)
         uint8_t _quadrant_id = (screen_tile_row & 0x2) + ((screen_tile_column & 0x2) >> 1);
@@ -198,18 +199,17 @@ void nes_ppu::fetch_tile()
         int start_bit = 7;
         int end_bit = 0;
         
-        int x_offset = _scroll_x % 8;
-        int tile = (scanline_render_cycle.count() - x_offset - /* current_access_cycle */ 6) % 8;
-        if (x_offset > 0)
+        int tile = (scanline_render_cycle.count() - /* current_access_cycle */ 6) / 8;
+        if (_fine_x_scroll > 0)
         {
             if (tile == 0)
             {
-                start_bit = 7 - x_offset;
+                start_bit = 7 - _fine_x_scroll;
             }
             else if (tile == 31)
             {
                 // last tile
-                end_bit = x_offset - 1;
+                end_bit = 7 - _fine_x_scroll + 1;
             }
         }
 
@@ -429,7 +429,7 @@ void nes_ppu::fetch_sprite(uint8_t sprite_id)
         bool behind_bg = sprite->attr & PPU_SPRITE_ATTR_BEHIND_BG;
         if (behind_bg || is_sprite_0)
         {
-            bool overlap = _frame_buffer[frame_addr] != get_palette_color(/* is_background = */ true, 0);
+            bool overlap = (_frame_buffer[frame_addr] != get_palette_color(/* is_background = */ true, 0));
             if (overlap)
             {
                 if (is_sprite_0)

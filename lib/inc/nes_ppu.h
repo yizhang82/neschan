@@ -446,8 +446,8 @@ private :
 
     uint8_t get_palette_color(bool is_background, uint8_t palette_index_4_bit)
     {
-        // There is only one universal backdrop color 
-        if (palette_index_4_bit == 0)
+        // There is only one universal backdrop color doesn't matter which background it is
+        if ((palette_index_4_bit & 0x3) == 0)
             return read_byte(0x3f00);
 
         uint16_t palette_addr = (is_background ? 0x3f00 : 0x3f10) | palette_index_4_bit;
