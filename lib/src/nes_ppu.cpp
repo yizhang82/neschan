@@ -227,10 +227,12 @@ void nes_ppu::fetch_tile()
             _frame_buffer[frame_addr] = _pixel_cycle[i];
         }
 
-        // Wrap or increment
+        // Increment X position
         if ((_ppu_addr & 0x1f) == 0x1f)
         {
+            // Wrap to the next name table
             _ppu_addr &= ~0x1f;
+            _ppu_addr ^= 0x0400;
         }
         else
         {
@@ -284,7 +286,7 @@ void nes_ppu::fetch_tile_pipeline()
         if (_scanline_cycle == nes_ppu_cycle_t(257))
         {
             // Reset horizontal position
-            _ppu_addr = (_ppu_addr & 0xfbe0) | (_temp_ppu_addr & ~0xfbe0);
+            _ppu_addr = (_ppu_addr & 0xf3e0) | (_temp_ppu_addr & ~0xf3e0);
         }
 
         // fetch tile data for sprites on the next scanline
@@ -488,7 +490,9 @@ void nes_ppu::step_to(nes_cycle_t count)
                     // Reset _ppu_addr to top-left of the screen
                     // But only do so when rendering is on (otherwise it will interfer with PPUDATA writes)
                     if (_show_bg || _show_sprites)
+                    {
                         _ppu_addr = _temp_ppu_addr;
+                    }
                 }
                 else if (_scanline_cycle == nes_ppu_cycle_t(1))
                 {

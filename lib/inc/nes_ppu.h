@@ -364,7 +364,6 @@ public :
         {
             // second write
             _temp_ppu_addr = (_temp_ppu_addr & 0xc1f) | (uint16_t(val & 0xf8) << 2) | (uint16_t(val & 0x7) << 12);
-            _ppu_addr = _temp_ppu_addr;
             _scroll_y = val;
         }
     }
@@ -377,7 +376,8 @@ public :
         if (_addr_toggle)
         {
             // first write
-            _temp_ppu_addr = (_temp_ppu_addr & 0x00ff) | (uint16_t(val) << 8);
+            // note that both PPUADDR(2006) and PPUSCROLL (2005) share the same _temp_ppu_addr
+            _temp_ppu_addr = (_temp_ppu_addr & 0x00ff) | (uint16_t(val & 0x3f) << 8);
         }
         else
         {
@@ -496,6 +496,11 @@ private :
     uint8_t _scroll_y;
 
     // PPUADDR
+    // yyy NN YYYYY XXXXX
+    //    ||| || ||||| +++++-- coarse X scroll
+    //    ||| || +++++-------- coarse Y scroll
+    //    ||| ++-------------- nametable select
+    //    +++----------------- fine Y scroll
     uint16_t _ppu_addr;                 // the "v" register - see http://wiki.nesdev.com/w/index.php/PPU_scrolling
     uint16_t _temp_ppu_addr;            // the "t" register - see http://wiki.nesdev.com/w/index.php/PPU_scrolling
     uint8_t  _fine_x_scroll;            // the "x" register - see http://wiki.nesdev.com/w/index.php/PPU_scrolling 
