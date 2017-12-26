@@ -262,6 +262,8 @@ public :
 
     void write_PPUCTRL(uint8_t val)
     {   
+        NES_TRACE4("[NES_PPU] write_PPUCTRL(Val=" << std::hex << (uint32_t)val << ")");
+
         // Ignore write before PPU is ready
         if (!is_ready()) return;
 
@@ -283,6 +285,8 @@ public :
 
     void write_PPUMASK(uint8_t val)
     {
+        NES_TRACE4("[NES_PPU] write_PPUMASK(Val=" << std::hex << (uint32_t)val << ")");
+
         // Ignore write before PPU is ready
         if (!is_ready()) return;
 
@@ -309,9 +313,10 @@ public :
             // clear various flags after reading
             _vblank_started = false;
             _addr_toggle = false;
+            write_latch(status);
+            NES_TRACE4("[NES_PPU] read_PPUSTATUS(Val=" << std::hex << (uint32_t)status << ")");
         }
 
-        write_latch(status);
         return status;
     }
 

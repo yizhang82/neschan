@@ -210,7 +210,7 @@ void nes_ppu::fetch_tile()
 
             _pixel_cycle[i] = get_palette_color(/* is_background = */ true, color_4_bit);
 
-            uint16_t frame_addr = uint16_t(cur_scanline) * PPU_SCREEN_X + (_ppu_addr & 0x1f) * 8 + (7 - i);
+            uint16_t frame_addr = uint16_t(cur_scanline) * PPU_SCREEN_X + tile * 8 + (7 - i);
             if (frame_addr >= sizeof(_frame_buffer_1))
                 continue;
             _frame_buffer[frame_addr] = _pixel_cycle[i];
@@ -275,8 +275,10 @@ void nes_ppu::fetch_tile_pipeline()
         if (_scanline_cycle == nes_ppu_cycle_t(257))
         {
             // Reset horizontal position
+            // This includes resetting horizontal name table (2000~2400, 2800~2c00)
             // NNYY YYYX XXXX
-            _ppu_addr = (_ppu_addr & 0xffe0) | (_temp_ppu_addr & ~0xffe0);
+            //  ^      ^ ^^^^
+            _ppu_addr = (_ppu_addr & 0xfbe0) | (_temp_ppu_addr & ~0xfbe0);
         }
 
         // fetch tile data for sprites on the next scanline
