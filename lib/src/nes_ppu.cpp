@@ -195,11 +195,22 @@ void nes_ppu::fetch_tile()
             {
                 start_bit = 7 - _fine_x_scroll;
             }
-            else if (tile == 31)
+            else if (tile == 32)
             {
                 // last tile
                 end_bit = 7 - _fine_x_scroll + 1;
             }
+            else if (tile > 32)
+            {
+                // no need to render more than 33 tiles
+                // otherwise you'll see wrapped tiles in the begining of next line
+                return;
+            }
+        }
+        else
+        {
+            // We render exactly 32 tiles
+            if (tile > 31) return;
         }
 
         for (int i = start_bit; i >= end_bit; --i)
@@ -210,7 +221,7 @@ void nes_ppu::fetch_tile()
 
             _pixel_cycle[i] = get_palette_color(/* is_background = */ true, color_4_bit);
 
-            uint16_t frame_addr = uint16_t(cur_scanline) * PPU_SCREEN_X + tile * 8 + (7 - i);
+            uint16_t frame_addr = uint16_t(cur_scanline) * PPU_SCREEN_X + _x_offset++;
             if (frame_addr >= sizeof(_frame_buffer_1))
                 continue;
             _frame_buffer[frame_addr] = _pixel_cycle[i];
@@ -279,6 +290,7 @@ void nes_ppu::fetch_tile_pipeline()
             // NNYY YYYX XXXX
             //  ^      ^ ^^^^
             _ppu_addr = (_ppu_addr & 0xfbe0) | (_temp_ppu_addr & ~0xfbe0);
+            _x_offset = 0;
         }
 
         // fetch tile data for sprites on the next scanline
@@ -434,7 +446,7 @@ void nes_ppu::fetch_sprite(uint8_t sprite_id)
                     // behind background
                     continue;
                 }
-            }
+             }
         }
 
         _frame_buffer[frame_addr] = color;
