@@ -139,29 +139,14 @@ void nes_ppu::fetch_tile()
 
     auto data_access_cycle = scanline_render_cycle % 8;
 
-    // which 8x8 tile in the screen it is 
-    uint8_t screen_tile_column = (uint8_t) (scanline_render_cycle.count() + _scroll_x) / 8;
-    uint8_t screen_tile_row = (cur_scanline + _scroll_y) / 8;
-
-    uint16_t name_tbl_addr = (_ppu_addr & 0xfff) | 0x2000;
-    if (screen_tile_column >= 32)
-    {
-        // X wrapping behavior
-        screen_tile_column -= 32;
-    }
-    
-    if (screen_tile_row >= 30)
-    {
-        screen_tile_row -= 30;
-    }
-
     // which of 8 rows witin a tile
-    uint8_t screen_tile_row_index = (cur_scanline + _scroll_y) % 8;
+    uint8_t tile_row_index = (cur_scanline + _scroll_y) % 8;
 
     if (data_access_cycle == nes_ppu_cycle_t(0))
     {
         // fetch nametable byte for current 8-pixel-tile
         // http://wiki.nesdev.com/w/index.php/PPU_nametables
+        uint16_t name_tbl_addr = (_ppu_addr & 0xfff) | 0x2000;
         _tile_index = read_byte(name_tbl_addr);
     }
     else if (data_access_cycle == nes_ppu_cycle_t(2))
@@ -171,11 +156,15 @@ void nes_ppu::fetch_tile()
         // the result color byte is 2-bit (bit 3/2) for each quadrant
         // http://wiki.nesdev.com/w/index.php/PPU_attribute_tables
         // http://wiki.nesdev.com/w/index.php/PPU_scrolling#Wrapping_around
-        uint16_t attr_tbl_addr = 0x23c0 | (_ppu_addr & 0x0c00) | ((_ppu_addr >> 4) & 0x38) | ((_ppu_addr >> 2) & 0x7);
+        uint8_t tile_column = _ppu_addr & 0x1f;         // YY YYYX XXXX = 1 1111
+        uint8_t tile_row = (_ppu_addr & 0x3e0) >> 5;    // YY YYYX XXXX = 11 1110 0000
+        uint8_t tile_attr_column = (tile_column >> 2) & 0x7;
+        uint8_t tile_attr_row = (tile_row >> 2) & 0x7;
+        uint16_t attr_tbl_addr = 0x23c0 | (_ppu_addr & 0x0c00) | (tile_attr_row << 3) | tile_attr_column;
         uint8_t color_byte = read_byte(attr_tbl_addr);
 
         // each quadrant has 2x2 tile and each row/column has 4 tiles, so divide by 2 (& 0x2 is faster)
-        uint8_t _quadrant_id = (screen_tile_row & 0x2) + ((screen_tile_column & 0x2) >> 1);
+        uint8_t _quadrant_id = (tile_row & 0x2) + ((tile_column & 0x2) >> 1);
         uint8_t color_bit32 = (color_byte & (0x3 << (_quadrant_id * 2))) >> (_quadrant_id * 2); 
         _tile_palette_bit32 = color_bit32 << 2;
     }
@@ -186,13 +175,13 @@ void nes_ppu::fetch_tile()
         // simply consists of indexes. It is quite convoluted by today's standards but it is 
         // just a space saving technique.
         // http://wiki.nesdev.com/w/index.php/PPU_pattern_tables
-        _bitplane0 = read_pattern_table_column(/* sprite = */false, _tile_index, /* bitplane = */ 0, screen_tile_row_index);
+        _bitplane0 = read_pattern_table_column(/* sprite = */false, _tile_index, /* bitplane = */ 0, tile_row_index);
     }
     else if (data_access_cycle == nes_ppu_cycle_t(6))
     {
         // fetch tilebitmap high
         // add one more cycle for memory access to skip directly to next access
-        uint8_t bitplane1 = read_pattern_table_column(/* sprite = */false, _tile_index, /* bitplane = */ 1, screen_tile_row_index);
+        uint8_t bitplane1 = read_pattern_table_column(/* sprite = */false, _tile_index, /* bitplane = */ 1, tile_row_index);
 
         // for each column - bitplane0/bitplane1 has entire 8 column
         // high bit -> low bit
@@ -221,7 +210,7 @@ void nes_ppu::fetch_tile()
 
             _pixel_cycle[i] = get_palette_color(/* is_background = */ true, color_4_bit);
 
-            uint16_t frame_addr = uint16_t(cur_scanline) * PPU_SCREEN_X + screen_tile_column * 8 + (7 - i);
+            uint16_t frame_addr = uint16_t(cur_scanline) * PPU_SCREEN_X + (_ppu_addr & 0x1f) * 8 + (7 - i);
             if (frame_addr >= sizeof(_frame_buffer_1))
                 continue;
             _frame_buffer[frame_addr] = _pixel_cycle[i];
