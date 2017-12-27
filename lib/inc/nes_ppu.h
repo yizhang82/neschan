@@ -492,6 +492,11 @@ private :
         // TTTTTTB - T is tile number and B is tile pattern table select $0000 or $1000
         uint16_t tile_addr = ((uint16_t(tile_index) & 0x1) << 12) | ((uint16_t(tile_index) & ~0x1) << 4);
 
+        // the tiles are laid like this:
+        // 0-7: bitplane 0 for top tile       --> tile row index 0-7
+        // 8-f: bitplane 1 for top tile       --> tile row index 0-7
+        // 10-17: bitplane 0 for bottom tile  --> tile row index 8-f
+        // 18-1f: bitplane 1 for bottom tile  --> tile row index 8-f
         return read_byte(tile_addr | (bitplane << 3) | (tile_row_index & 0x7) | ((tile_row_index & 0x8) << 1));
     }
 
