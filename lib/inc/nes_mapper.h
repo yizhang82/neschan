@@ -134,6 +134,50 @@ private :
     uint8_t _control;                           // control register
 };
 
+//
+// iNES Mapper 4 
+// http://wiki.nesdev.com/w/index.php/MMC3
+//
+class nes_mapper_mmc3 : public nes_mapper
+{
+public:
+    nes_mapper_mmc3(shared_ptr<vector<uint8_t>> &prg_rom, shared_ptr<vector<uint8_t>> &chr_rom, bool vertical_mirroring)
+        :_prg_rom(prg_rom), _chr_rom(chr_rom), _vertical_mirroring(vertical_mirroring)
+    {
+        // 1 -> neither 0 or 0x40 - means not yet initialized (and always will be different)
+        _prev_prg_mode = 1;
+
+        _bank_select = 0;
+    }
+
+    virtual void on_load_ram(nes_memory &mem);
+    virtual void on_load_ppu(nes_ppu &ppu);
+    virtual void get_info(nes_mapper_info &info);
+
+    virtual void write_reg(uint16_t addr, uint8_t val);
+
+private:
+    void write_bank_select(uint8_t val);
+    void write_bank_data(uint8_t val);
+    void write_mirroring(uint8_t val);
+    void write_prg_ram_protect(uint8_t val) { assert(false); }
+    void write_irq_latch(uint8_t val) { assert(false); }
+    void write_irq_reload(uint8_t val) { assert(false); }
+    void write_irq_disable(uint8_t val) { }
+    void write_irq_enable(uint8_t val) { assert(false); }
+
+private:
+    nes_ppu * _ppu;
+    nes_memory *_mem;
+
+    shared_ptr<vector<uint8_t>> _prg_rom;
+    shared_ptr<vector<uint8_t>> _chr_rom;
+    bool _vertical_mirroring;
+
+    uint8_t _bank_select;                       // control register
+    uint8_t _prev_prg_mode;                     // previous prg mode
+};
+
 #define FLAG_6_USE_VERTICAL_MIRRORING_MASK 0x1
 #define FLAG_6_HAS_BATTERY_BACKED_PRG_RAM_MASK 0x2
 #define FLAG_6_HAS_TRAINER_MASK  0x4
@@ -212,10 +256,13 @@ public :
         file.read((char *)chr_rom->data(), chr_rom->size());
         
         shared_ptr<nes_mapper> mapper;
+
+        // @TODO - Change this into a mapper factory class
         switch (mapper_id)
         {
         case 0: mapper = make_shared<nes_mapper_nrom>(prg_rom, chr_rom, vertical_mirroring); break;
         case 1: mapper = make_shared<nes_mapper_mmc1>(prg_rom, chr_rom, vertical_mirroring); break;
+        case 4: mapper = make_shared<nes_mapper_mmc3>(prg_rom, chr_rom, vertical_mirroring); break;
         default:
             assert(!"Unsupported mapper id");           
         }

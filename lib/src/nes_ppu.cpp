@@ -193,7 +193,7 @@ void nes_ppu::fetch_tile()
         int start_bit = 7;
         int end_bit = 0;
         
-        int tile = (scanline_render_cycle.count() - /* current_access_cycle */ 6) / 8;
+        int tile = (int)(scanline_render_cycle.count() - /* current_access_cycle */ 6) / 8;
         if (_fine_x_scroll > 0)
         {
             if (tile == 0)

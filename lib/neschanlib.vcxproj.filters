@@ -74,5 +74,8 @@
     <ClCompile Include="src\mappers\nes_mapper_nrom.cpp">
       <Filter>src\mappers</Filter>
     </ClCompile>
+    <ClCompile Include="src\nes_mapper_mmc3.cpp">
+      <Filter>src\mappers</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
