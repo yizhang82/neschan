@@ -128,7 +128,7 @@ private :
 
 const SDL_GameControllerButton sdl_game_controller::s_buttons[] = {
     SDL_CONTROLLER_BUTTON_A,
-    SDL_CONTROLLER_BUTTON_B,
+    SDL_CONTROLLER_BUTTON_X,
     SDL_CONTROLLER_BUTTON_GUIDE,
     SDL_CONTROLLER_BUTTON_START,
     SDL_CONTROLLER_BUTTON_DPAD_UP,
@@ -260,7 +260,7 @@ int main(int argc, char *argv[])
     SDL_DestroyRenderer(sdlRenderer);
     SDL_DestroyWindow(sdlWindow);
 
-    //Quit SDL subsystems
+    // Quit SDL subsystems
     SDL_Quit();
 
     return 0;
