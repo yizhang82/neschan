@@ -13,6 +13,9 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
+    <Filter Include="src\mappers">
+      <UniqueIdentifier>{d324f22a-b233-401f-b33e-284d98bac57d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />
@@ -64,6 +67,12 @@
     </ClCompile>
     <ClCompile Include="src\nes_input.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mappers\nes_mapper_mmc1.cpp">
+      <Filter>src\mappers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mappers\nes_mapper_nrom.cpp">
+      <Filter>src\mappers</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

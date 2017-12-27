@@ -50,4 +50,26 @@ void nes_memory::load_mapper(shared_ptr<nes_mapper> &mapper)
     mapper->on_load_ram(*this);
 
     _mapper = mapper;
+    _mapper->get_info(_mapper_info);
+}
+
+void nes_memory::set_byte(uint16_t addr, uint8_t val)
+{
+    redirect_addr(addr);
+    if (is_io_reg(addr))
+    {
+        write_io_reg(addr, val);
+        return;
+    }
+
+    if (_mapper && (_mapper_info.flags & nes_mapper_flags_has_registers))
+    {
+        if (addr >= _mapper_info.reg_start && addr <= _mapper_info.reg_end)
+        {
+            _mapper->write_reg(addr, val);
+            return;
+        }
+    }
+
+    _ram[addr] = val;
 }

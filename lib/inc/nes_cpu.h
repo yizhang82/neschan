@@ -116,6 +116,7 @@ public :
 public :
 
     void stop_at_infinite_loop() { _stop_at_infinite_loop = true; }
+    void stop_at_addr(uint16_t addr) { _is_stop_at_addr = true;  _stop_at_addr = addr; }
 
     void set_carry_flag(bool set) { set_flag(PROCESSOR_STATUS_CARRY_MASK, set); }
     uint8_t get_carry() { return (_context.P & PROCESSOR_STATUS_CARRY_MASK); }
@@ -139,7 +140,7 @@ public :
 
     uint8_t peek(uint16_t addr) { return _mem->get_byte(addr); }
     uint16_t peek_word(uint16_t addr) { return _mem->get_word(addr); }
-    void poke(uint16_t addr, uint8_t value) { _mem->set_byte(addr, value); }
+    void poke(uint16_t addr, uint8_t value);
     
     uint8_t &A() { return _context.A; }
     uint8_t &X() { return _context.X; }
@@ -601,5 +602,7 @@ private :
     bool            _dma_pending;           // OAMDMA is requested from writing $4014
     uint16_t        _dma_addr;              // starting address
     bool            _stop_at_infinite_loop; // stop at when the ROM starts infinite loop - useful for testing
+    bool            _is_stop_at_addr;       // stop at a certain address - useful for testing
+    uint16_t        _stop_at_addr;          // stop at a certain address - useful for testing
 };
 

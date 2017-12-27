@@ -76,4 +76,55 @@ TEST_CASE("CPU tests") {
         CHECK(cpu->peek(0x2) == 0);
         CHECK(cpu->peek(0x3) == 0);
     }
+    /*
+    SUBCASE("instr_test-v5 official") {
+        INIT_TRACE("neschan.instrtest.instr_test-v5.official.log");
+
+        system.power_on();
+
+        system.run_rom("./roms/instr_test-v5/official_only.nes", nes_rom_exec_mode_reset);
+
+        auto cpu = system.cpu();
+
+        // Check the test is successful
+        CHECK(cpu->peek(0x6000) == 0);
+    }
+    */
+    SUBCASE("instr_test-v5 basics") {
+        INIT_TRACE("neschan.instrtest.instr_test-v5.basics.log");
+
+        system.power_on();
+        auto cpu = system.cpu();
+        cpu->stop_at_infinite_loop();
+
+        // cpu->stop_at_addr(0xE8D5);
+        system.run_rom("./roms/instr_test-v5/rom_singles/01-basics.nes", nes_rom_exec_mode_reset);
+
+        // Check the test is successful
+        CHECK(cpu->peek(0x6000) == 0);
+    }
+    SUBCASE("instr_test-v5 implied") {
+        INIT_TRACE("neschan.instrtest.instr_test-v5.implied.log");
+
+        system.power_on();
+        auto cpu = system.cpu();
+        cpu->stop_at_infinite_loop();
+
+        system.run_rom("./roms/instr_test-v5/rom_singles/02-implied.nes", nes_rom_exec_mode_reset);
+
+        // Check the test is successful
+        CHECK(cpu->peek(0x6000) == 0);
+    }
+    SUBCASE("instr_test-v5 absolute") {
+        INIT_TRACE_DEBUG("neschan.instrtest.instr_test-v5.absolute.log");
+
+        system.power_on();
+        auto cpu = system.cpu();
+        cpu->stop_at_infinite_loop();
+
+        system.run_rom("./roms/instr_test-v5/rom_singles/06-absolute.nes", nes_rom_exec_mode_reset);
+
+        // Check the test is successful
+        // CHECK(cpu->peek(0x6000) == 0);
+    }
 }

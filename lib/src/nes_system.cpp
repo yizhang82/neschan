@@ -53,7 +53,9 @@ void nes_system::load_rom(const char *rom_path, nes_rom_exec_mode mode)
 
     if (mode == nes_rom_exec_mode_direct)
     {
-        _cpu->PC() = mapper->get_code_addr();
+        nes_mapper_info info;
+        mapper->get_info(info);
+        _cpu->PC() = info.code_addr;
     }
     else 
     {

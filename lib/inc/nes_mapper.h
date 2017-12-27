@@ -1,125 +1,137 @@
 #pragma once
 
 #include <cstdint>
-#include "nes_memory.h"
-#include "nes_ppu.h"
-#include "nes_trace.h"
+#include <nes_trace.h>
 #include <memory>
 #include <fstream>
 
 using namespace std;
 
-enum nes_mapper_flags
+enum nes_mapper_flags : uint16_t 
 {
-    nes_mapper_flags_none,
-    // This mapper can dynamically switch memory
-    nes_mapper_flags_dynamic_switching = 0x1,
+    nes_mapper_flags_none = 0,
 
-    // Uses vertical mirroring
-    nes_mapper_flags_vertical_mirroring = 0x2
+    nes_mapper_flags_mirroring_mask = 0x3,
+
+    // A, B
+    // A, B
+    nes_mapper_flags_vertical_mirroring = 0x2,
+
+    // A, A
+    // B, B
+    nes_mapper_flags_horizontal_mirroring = 0x3,
+
+    // ?
+    nes_mapper_flags_one_screen_upper_bank = 0x1,
+
+    // ?
+    nes_mapper_flags_one_screen_lower_bank = 0x0,
+
+    // Has registers
+    nes_mapper_flags_has_registers = 0x4,
 };
+
+struct nes_mapper_info
+{
+    uint16_t code_addr;            // start running code here
+    uint16_t reg_start;            // beginning of mapper registers
+    uint16_t reg_end;              // end of mapper registers - inclusive
+    nes_mapper_flags flags;        // whatever flags you might need
+};
+
+class nes_ppu;
+class nes_cpu;
+class nes_memory;
 
 class nes_mapper
 {
 public :
     //
-    // PRG ROM base address. execution of code starts here
-    //
-    virtual uint16_t get_code_addr() = 0;
-
-    //
     // Called when mapper is loaded into memory
     // Useful when all you need is a one-time memcpy
     //
-    virtual void on_load_ram(nes_memory &mem) = 0;
+    virtual void on_load_ram(nes_memory &mem) {}
 
     //
     // Called when mapper is loaded into PPU
     // Useful when all you need is a one-time memcpy
     //
-    virtual void on_load_ppu(nes_ppu &ppu) = 0;
+    virtual void on_load_ppu(nes_ppu &ppu) {}
 
     //
-    // Returns various mapper related flags
+    // Returns various mapper related information
     //
-    virtual nes_mapper_flags get_flags() = 0;
+    virtual void get_info(nes_mapper_info &) = 0;
 
     //
-    // Return the mapped address given the target address
-    // nullptr if not mapped
-    // This is only needed if nes_mapper_flags_dynamic_switching is set 
+    // Write mapper register in the given address
+    // Caller should check if addr is in range of register first
     //
-    virtual uint8_t *redirect_addr(uint16_t addr) = 0;
+    virtual void write_reg(uint16_t addr, uint8_t val) {};
+
+    virtual ~nes_mapper() {}
 };
 
-class nes_mapper_1 : public nes_mapper
+//
+// iNES Mapper 0
+// http://wiki.nesdev.com/w/index.php/NROM
+//
+class nes_mapper_nrom : public nes_mapper
 {
 public :
-    nes_mapper_1(shared_ptr<vector<uint8_t>> &prg_rom, shared_ptr<vector<uint8_t>> &chr_rom, bool vertical_mirroring)
+    nes_mapper_nrom(shared_ptr<vector<uint8_t>> &prg_rom, shared_ptr<vector<uint8_t>> &chr_rom, bool vertical_mirroring)
         :_prg_rom(prg_rom), _chr_rom(chr_rom), _vertical_mirroring(vertical_mirroring)
     {
 
     }
 
-    //
-    // PRG ROM base address. execution of code starts here
-    //
-    virtual uint16_t get_code_addr()
-    {        
-        if (_prg_rom->size() == 0x4000)
-            return 0xc000;
-        else
-            return 0x8000;
-    }
-
-    //
-    // Called when mapper is loaded into memory
-    // Useful when all you need is a one-time memcpy
-    //
-    virtual void on_load_ram(nes_memory &mem)
-    {
-        // memcpy
-        mem.set_bytes(0x8000, _prg_rom->data(), _prg_rom->size());
-
-        if (_prg_rom->size() == 0x4000)
-        {
-            // "map" 0xC000 to 0x8000
-            mem.set_bytes(0xc000, _prg_rom->data(), _prg_rom->size());
-        }
-    }
-
-
-    //
-    // Called when mapper is loaded into PPU
-    // Useful when all you need is a one-time memcpy
-    //
-    virtual void on_load_ppu(nes_ppu &ppu)
-    {
-        // memcpy
-        ppu.write_bytes(0x0000, _chr_rom->data(), _chr_rom->size());
-    }
-
-    //
-    // Returns various mapper related flags
-    //
-    virtual nes_mapper_flags get_flags()
-    {
-        if (_vertical_mirroring)
-            return nes_mapper_flags_vertical_mirroring;
-        return nes_mapper_flags_none;
-    }
-
-    //
-    // Return the mapped address given the target address
-    // nullptr if not mapped
-    // This is only needed if nes_mapper_flags_dynamic_switching is set 
-    //
-    virtual uint8_t *redirect_addr(uint16_t addr) { return nullptr; }
+    virtual void on_load_ram(nes_memory &mem);
+    virtual void on_load_ppu(nes_ppu &ppu);
+    virtual void get_info(nes_mapper_info &info);
 
 private :
     shared_ptr<vector<uint8_t>> _prg_rom;
     shared_ptr<vector<uint8_t>> _chr_rom;
     bool _vertical_mirroring;
+};
+
+//
+// iNES Mapper 1 
+// http://wiki.nesdev.com/w/index.php/MMC1
+//
+class nes_mapper_mmc1 : public nes_mapper
+{
+public :
+    nes_mapper_mmc1(shared_ptr<vector<uint8_t>> &prg_rom, shared_ptr<vector<uint8_t>> &chr_rom, bool vertical_mirroring)
+        :_prg_rom(prg_rom), _chr_rom(chr_rom), _vertical_mirroring(vertical_mirroring)
+    {
+        _bit_latch = 0;
+    }
+
+    virtual void on_load_ram(nes_memory &mem);
+    virtual void on_load_ppu(nes_ppu &ppu);
+    virtual void get_info(nes_mapper_info &info);
+
+    virtual void write_reg(uint16_t addr, uint8_t val);
+
+ private :
+    void write_control(uint8_t val);
+    void write_chr_bank_0(uint8_t val);
+    void write_chr_bank_1(uint8_t val);
+    void write_prg_bank(uint8_t val);
+
+private :
+    nes_ppu *_ppu;
+    nes_memory *_mem;
+
+    shared_ptr<vector<uint8_t>> _prg_rom;
+    shared_ptr<vector<uint8_t>> _chr_rom;
+    bool _vertical_mirroring;
+
+
+    uint8_t _bit_latch;                         // for serial port
+    uint8_t _reg;                               // current register being written
+    uint8_t _control;                           // control register
 };
 
 #define FLAG_6_USE_VERTICAL_MIRRORING_MASK 0x1
@@ -198,9 +210,15 @@ public :
 
         file.read((char *)prg_rom->data(), prg_rom->size());
         file.read((char *)chr_rom->data(), chr_rom->size());
-
-        assert(mapper_id == 0);
-        shared_ptr<nes_mapper> mapper = make_shared<nes_mapper_1>(prg_rom, chr_rom, vertical_mirroring);
+        
+        shared_ptr<nes_mapper> mapper;
+        switch (mapper_id)
+        {
+        case 0: mapper = make_shared<nes_mapper_nrom>(prg_rom, chr_rom, vertical_mirroring); break;
+        case 1: mapper = make_shared<nes_mapper_mmc1>(prg_rom, chr_rom, vertical_mirroring); break;
+        default:
+            assert(!"Unsupported mapper id");           
+        }
 
         file.close();
 

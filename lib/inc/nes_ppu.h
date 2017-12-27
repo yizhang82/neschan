@@ -3,9 +3,10 @@
 #include <cstdint>
 #include <memory>
 
-#include "nes_component.h"
-#include "nes_cycle.h"
+#include <nes_component.h>
+#include <nes_cycle.h>
 #include <nes_trace.h>
+#include <nes_mapper.h>
 
 // PPU has its own separate 16KB memory address space
 // http://wiki.nesdev.com/w/index.php/PPU_memory_map
@@ -161,6 +162,8 @@ public :
 
     void load_mapper(shared_ptr<nes_mapper> &mapper);
 
+    void set_mirroring(nes_mapper_flags flags);
+
     uint8_t *frame_buffer()
     {
         // Return the completed buffer
@@ -205,6 +208,9 @@ public :
 
     void write_bytes(uint16_t addr, uint8_t *src, size_t src_size)
     {
+        if (addr + src_size > PPU_VRAM_SIZE)
+            return;
+
         redirect_addr(addr);
         memcpy_s(_vram.get() + addr, PPU_VRAM_SIZE - addr, src, src_size);
     }
@@ -223,10 +229,15 @@ public :
         else if ((addr & 0xf000) == 0x2000)
         {
             // name table mirroring
-            if (_vertical_mirroring)
+            if (_mirroring_flags == nes_mapper_flags_vertical_mirroring)
                 addr &= 0xf7ff;     // $2000=$2800, $2400=$2c00
-            else
+            else if (_mirroring_flags == nes_mapper_flags_horizontal_mirroring)
                 addr &= 0xfbff;     // $2000=$2400, $2800=$2c00
+            else if (_mirroring_flags == nes_mapper_flags_one_screen_lower_bank)
+                addr &= 0xf3ff;     // $2000 mapped to all the other 3
+            else if (_mirroring_flags == nes_mapper_flags_one_screen_upper_bank)
+                addr = (addr & 0xf3ff) | 0x400; // $2400 mapped to all the other 3
+            else assert(!"Unsupported mirroring modes");
         } 
         else if (addr >= 0x3000)
         {
@@ -547,5 +558,5 @@ private :
 
     shared_ptr<nes_mapper> _mapper;
 
-    bool _vertical_mirroring;
+    nes_mapper_flags _mirroring_flags;  // mapper flags masked by mirroring flags
 };

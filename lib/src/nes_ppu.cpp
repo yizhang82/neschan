@@ -53,9 +53,16 @@ void nes_ppu::load_mapper(shared_ptr<nes_mapper> &mapper)
     // Give mapper a chance to copy all the bytes needed
     mapper->on_load_ppu(*this);
 
-    _vertical_mirroring = mapper->get_flags() & nes_mapper_flags_vertical_mirroring;
+    nes_mapper_info info;
+    mapper->get_info(info);
+    set_mirroring(info.flags);
 
     _mapper = mapper;
+}
+
+void nes_ppu::set_mirroring(nes_mapper_flags flags)
+{
+    _mirroring_flags = nes_mapper_flags(flags & nes_mapper_flags_mirroring_mask);
 }
 
 void nes_ppu::init()
@@ -100,8 +107,6 @@ void nes_ppu::init()
 
     _mask_oam_read = false;
     _frame_buffer = _frame_buffer_1;
-
-    _vertical_mirroring = false;
 }
 
 void nes_ppu::reset()

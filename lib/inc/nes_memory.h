@@ -4,7 +4,8 @@
 #include <cassert>
 #include <memory>
 
-#include "nes_component.h"
+#include <nes_component.h>
+#include <nes_mapper.h>
 
 using namespace std;
 
@@ -50,14 +51,7 @@ public :
         return get_byte(addr) + (uint16_t(get_byte(addr + 1)) << 8);
     }
 
-    void set_byte(uint16_t addr, uint8_t value)
-    {
-        redirect_addr(addr);
-        if (is_io_reg(addr))
-            return write_io_reg(addr, value);
-
-        _ram[addr] = value;
-    }
+    void set_byte(uint16_t addr, uint8_t val);
 
     void set_bytes(uint16_t addr, uint8_t *data, size_t size)
     {
@@ -84,7 +78,7 @@ public :
     {
         if ((addr & 0xE000) == 0)
         {
-            // map 0x0000~0x07ff 4 times until 0x1ffff
+            // map 0x0000~0x07ff 4 times until 0x1fff
             addr &= 0x7ff;
         }
         else if ((addr & 0xE000) == 0x2000)
@@ -120,5 +114,7 @@ private :
     nes_system *_system;
     nes_ppu *_ppu;
     nes_input *_input;
+
+    nes_mapper_info _mapper_info;
 };
 

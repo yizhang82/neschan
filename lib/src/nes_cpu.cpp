@@ -12,6 +12,9 @@ void nes_cpu::power_on(nes_system *system)
     _nmi_pending = false;
     _dma_pending = false;
 
+    _is_stop_at_addr = false;
+    _stop_at_infinite_loop = false;
+
     // @TODO - Simulate full power-on state
     // http://wiki.nesdev.com/w/index.php/CPU_power_up_state
     _context.P = 0x24;          // @TODO - Should be 0x34 - but temporarily set to 0x24 to match nintendulator baseline 
@@ -23,6 +26,11 @@ void nes_cpu::power_on(nes_system *system)
 void nes_cpu::reset()
 {
 
+}
+
+void nes_cpu::poke(uint16_t addr, uint8_t value)
+{ 
+    _mem->set_byte(addr, value); 
 }
 
 void nes_cpu::step_to(nes_cycle_t new_count)
@@ -95,6 +103,12 @@ void nes_cpu::OAMDMA()
 
 void nes_cpu::exec_one_instruction()
 {
+    if (_is_stop_at_addr && _stop_at_addr == PC())
+    {
+        _system->stop();
+        _is_stop_at_addr = false;
+    }
+
     if (_nmi_pending)
     {
         // generate NMI
@@ -840,7 +854,14 @@ void nes_cpu::branch(bool cond, nes_addr_mode addr_mode)
     assert(addr_mode == nes_addr_mode_rel);
     int8_t rel = (int8_t) decode_byte();
     if (cond)
+    {
         PC() += rel;
+        if (rel == -2 && _stop_at_infinite_loop)
+        {
+            _system->stop();
+            _stop_at_infinite_loop = false;
+        }
+    }
 
     // cycle count
     step_cpu(get_branch_cycle(cond, PC(), rel));
