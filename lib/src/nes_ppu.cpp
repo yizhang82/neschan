@@ -230,6 +230,10 @@ void nes_ppu::fetch_tile()
             if (frame_addr >= sizeof(_frame_buffer_1))
                 continue;
             _frame_buffer[frame_addr] = _pixel_cycle[i];
+
+            // record the palette index just for sprite 0 hit detection
+            // the detection use palette 0 instead of actual color
+            _frame_buffer_bg[frame_addr] = tile_palette_bit01;
         }
 
         // Increment X position
@@ -446,7 +450,9 @@ void nes_ppu::fetch_sprite(uint8_t sprite_id)
         bool behind_bg = sprite->attr & PPU_SPRITE_ATTR_BEHIND_BG;
         if (behind_bg || is_sprite_0)
         {
-            bool overlap = (_frame_buffer[frame_addr] != get_palette_color(/* is_background = */ true, 0));
+            // use the recorded 2-bit palette index for sprite 0 hit detection
+            // don't use the actual color as some times game use all 0f 'black' palette to black out screen
+            bool overlap = (_frame_buffer_bg[frame_addr] != 0);
             if (overlap)
             {
                 if (is_sprite_0)

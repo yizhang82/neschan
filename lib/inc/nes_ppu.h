@@ -561,8 +561,9 @@ private :
     uint8_t _tile_palette_bit32;        // palette index bit 3/2 from attribute table
     uint8_t _bitplane0;                 // bitplane0 of current tile from pattern table
     uint8_t *_frame_buffer;             // entire frame buffer - only 4 bit is used
-    uint8_t _frame_buffer_1[PPU_SCREEN_Y * PPU_SCREEN_X];   // entire frame buffer - only 4 bit is used
-    uint8_t _frame_buffer_2[PPU_SCREEN_Y * PPU_SCREEN_X];   // entire frame buffer - only 4 bit is used
+    uint8_t _frame_buffer_1[PPU_SCREEN_Y * PPU_SCREEN_X];   // frame buffer 1 - used for double buffering
+    uint8_t _frame_buffer_bg[PPU_SCREEN_Y * PPU_SCREEN_X];  // sprite 0 hit detection
+    uint8_t _frame_buffer_2[PPU_SCREEN_Y * PPU_SCREEN_X];   // frame buffer 2 - used for double buffering
     uint8_t _pixel_cycle[8];            // pixels in each cycle
     uint8_t _shift_reg;                 // which bit do we care about
     uint8_t _x_offset;                  // current X offset
