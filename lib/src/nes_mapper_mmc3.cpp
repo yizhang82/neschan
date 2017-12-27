@@ -162,21 +162,21 @@ void nes_mapper_mmc3::write_bank_data(uint8_t val)
         uint16_t ppu_addr;
         uint16_t ppu_size;
         uint32_t offset;
-        uint8_t bits;
         switch (select)
         {
         case 0:
             // 2KB $0000-$07FF
             ppu_addr = 0;
-            bits = 10;
+            ppu_size = 0x800;
 
             // ignore bit 0 - as if this is 2KB mode
             val &= ~0x1;
             break;
+
         case 1:
             // 2KB $0800~$0FFF
             ppu_addr = 0x800;
-            bits = 10;
+            ppu_size = 0x800;
 
             // ignore bit 0 - as if this is like 2KB mode
             val &= ~0x1;
@@ -185,29 +185,32 @@ void nes_mapper_mmc3::write_bank_data(uint8_t val)
         case 2:
             // 1KB $1000~$13FF
             ppu_addr = 0x1000;
-            bits = 10;
+            ppu_size = 0x400;
             break;
+
         case 3:
             // 1KB $1400~$17FF
             ppu_addr = 0x1400;
-            bits = 10;
+            ppu_size = 0x400;
+
             break;
         case 4:
             // 1KB $1800~$1BFF
             ppu_addr = 0x1800;
-            bits = 10;
+            ppu_size = 0x400;
             break;
+
         case 5:
             // 1KB $1C00~$1FFF
             ppu_addr = 0x1c00;
-            bits = 10;
+            ppu_size = 0x400;
             break;
+
         default:
             assert(false);
         }
 
-        ppu_size = 1 << bits;
-        offset = uint32_t(val) << bits;
+        offset = uint32_t(val) << 10;
         if (inversion)
             ppu_addr ^= 0x1000;
 
