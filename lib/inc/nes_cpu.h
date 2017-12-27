@@ -387,7 +387,7 @@ private :
 
     bool is_sign_overflow(uint8_t val1, int8_t val2, uint8_t new_value)
     {
-        return ((val1 & 0x80) == (val2 & 0x80) &&
+        return (((val1 & 0x80) == (val2 & 0x80)) &&
             ((val1 & 0x80) != (new_value & 0x80)));
     }
 

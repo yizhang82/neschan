@@ -125,6 +125,6 @@ TEST_CASE("CPU tests") {
         system.run_rom("./roms/instr_test-v5/rom_singles/06-absolute.nes", nes_rom_exec_mode_reset);
 
         // Check the test is successful
-        // CHECK(cpu->peek(0x6000) == 0);
+        CHECK(cpu->peek(0x6000) == 0);
     }
 }

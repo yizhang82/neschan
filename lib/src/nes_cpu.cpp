@@ -721,11 +721,23 @@ void nes_cpu::ADC(nes_addr_mode addr_mode)
 void nes_cpu::_ADC(uint8_t val)
 {
     uint8_t old_val = A();
-    A() = val + A() + get_carry();
+    uint8_t new_val = old_val;
+    bool bit7_overflow = false;
+
+    // FF+FF+1=FF -> need to detect such case by checking for overflow in each step
+    // However, for FF+80+1=80 -> the sign bit got "rescued" so we should just check final result
+    new_val += val;
+    if (new_val < old_val) bit7_overflow = true;
+
+    uint8_t old_val2 = new_val;
+    new_val += get_carry();
+    if (new_val < old_val2) bit7_overflow = true;
+
+    A() = new_val;
 
     // flags
-    set_overflow_flag(is_sign_overflow(old_val, val, A()));
-    set_carry_flag(old_val > A() || val > A());
+    set_overflow_flag(is_sign_overflow(old_val, val, new_val));
+    set_carry_flag(bit7_overflow);
     calc_alu_flag(A());
 }
 
@@ -803,15 +815,7 @@ void nes_cpu::SBC(nes_addr_mode addr_mode)
 
 void nes_cpu::_SBC(uint8_t val)
 {
-    val = ~val + 1;                     // turn it into a add operand
-    val = val -(1 - get_carry());       // account for the carry
-    uint8_t old_val = A();
-    A() = A() + val;
-
-    // flags
-    set_overflow_flag(is_sign_overflow(old_val, val, A()));
-    set_carry_flag(A() <= old_val);
-    calc_alu_flag(A());
+    _ADC(~val);
 }
 
 // Load Accumulator
@@ -1130,7 +1134,7 @@ void nes_cpu::LSR(nes_addr_mode addr_mode)
     set_carry_flag(val & 0x1);
 
     // @DOCBUG: 
-    // http://obelisk.me.uk/6502/reference.html#ASL incorrectly states ASL detects A == 0
+    // http://obelisk.me.uk/6502/reference.html#LSR incorrectly states ASL detects A == 0
     set_zero_flag(new_val == 0);
     set_negative_flag(new_val & 0x80);
 
@@ -1208,7 +1212,9 @@ void nes_cpu::ROL(nes_addr_mode addr_mode)
 
     // flags
     set_carry_flag(val & 0x80);
-    set_zero_flag(A() == 0);
+    // @DOCBUG
+    // http://obelisk.me.uk/6502/reference.html#ROL incorrectly states zero is set if A == 0
+    set_zero_flag(new_val == 0);
     set_negative_flag(new_val & 0x80);
 
     // cycle count
@@ -1225,7 +1231,10 @@ void nes_cpu::ROR(nes_addr_mode addr_mode)
 
     // flags
     set_carry_flag(val & 0x1);
-    set_zero_flag(A() == 0);
+
+    // @DOCBUG
+    // http://obelisk.me.uk/6502/reference.html#ROR incorrectly states zero is set if A == 0
+    set_zero_flag(new_val == 0);
     set_negative_flag(new_val & 0x80);
 
     // cycle count
