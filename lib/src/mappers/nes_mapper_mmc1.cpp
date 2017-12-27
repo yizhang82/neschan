@@ -46,27 +46,28 @@ void nes_mapper_mmc1::write_reg(uint16_t addr, uint8_t val)
     {
         // clears register to initial state
         _bit_latch = 0;
-        _reg = 0;
+        _reg = 0x10;
         return;
     }
 
     // this is a serial port "register" - need to write bit-by-bit
+    // lowest-bit first
     _bit_latch++;
-    _reg <<= 1;
-    _reg |= (val & 1);
+    _reg >>= 1;
+    _reg |= ((val & 1) << 4);
     if (_bit_latch == 5)
     {
         // fifth write - we only need the 5 bits
         _bit_latch = 0;
 
         if (addr <= 0x9fff)
-            write_control(val);
+            write_control(_reg);
         else if (addr <= 0xbfff)
-            write_chr_bank_0(val);
+            write_chr_bank_0(_reg);
         else if (addr <= 0xdfff)
-            write_chr_bank_1(val);
+            write_chr_bank_1(_reg);
         else
-            write_prg_bank(val);
+            write_prg_bank(_reg);
     }
 }
 
@@ -141,7 +142,7 @@ void nes_mapper_mmc1::write_chr_bank_1(uint8_t val)
         if (_chr_rom->size() < addr + size)
             return;
 
-        _ppu->write_bytes(0x0000, _chr_rom->data() + addr, size);
+        _ppu->write_bytes(0x1000, _chr_rom->data() + addr, size);
     }
 }
 
