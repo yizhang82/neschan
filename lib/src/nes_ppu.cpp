@@ -357,7 +357,7 @@ void nes_ppu::fetch_sprite_pipeline()
         {
             // even cycle - write to secondary OAM
             // if in range
-            if (_sprite_pos_y + 1 <= _cur_scanline && _cur_scanline < _sprite_pos_y + 1 + 8)
+            if (_sprite_pos_y + 1 <= _cur_scanline && _cur_scanline < _sprite_pos_y + 1 + _sprite_height)
             {
                 if (sprite_id == 0)
                     _has_sprite_0 = true;
@@ -393,17 +393,26 @@ void nes_ppu::fetch_sprite_pipeline()
 void nes_ppu::fetch_sprite(uint8_t sprite_id)
 {
     assert(sprite_id < PPU_ACTIVE_SPRITE_MAX);
-    assert(!_use_8x16_sprite);
 
     sprite_info *sprite = &_sprite_buf[sprite_id];
     uint8_t tile_index = sprite->tile_index;
 
-    uint8_t tile_row_index = (_cur_scanline - sprite->pos_y - 1) % 8;
-    if (sprite->attr & PPU_SPRITE_ATTR_VERTICAL_FLIP)
-        tile_row_index = 7 - tile_row_index;
+    uint8_t tile_row_index = (_cur_scanline - sprite->pos_y - 1) % _sprite_height;
 
-    uint8_t bitplane0 = read_pattern_table_column(/* sprite = */ true, tile_index, 0, tile_row_index);
-    uint8_t bitplane1 = read_pattern_table_column(/* sprite = */ true, tile_index, 1, tile_row_index);
+    if (sprite->attr & PPU_SPRITE_ATTR_VERTICAL_FLIP)
+        tile_row_index = _sprite_height - 1 - tile_row_index;
+
+    uint8_t bitplane0, bitplane1;
+    if (_use_8x16_sprite)
+    {
+        bitplane0 = read_pattern_table_column_8x16_sprite(tile_index, 0, tile_row_index);
+        bitplane1 = read_pattern_table_column_8x16_sprite(tile_index, 1, tile_row_index);
+    }
+    else
+    {
+        bitplane0 = read_pattern_table_column(/* sprite = */ true, tile_index, 0, tile_row_index);
+        bitplane1 = read_pattern_table_column(/* sprite = */ true, tile_index, 1, tile_row_index);
+    }
 
     // bit3/2 is shared for the entire sprite (just like background attribute table)
     uint8_t palette_index_bit32 = (sprite->attr & PPU_SPRITE_ATTR_BIT32_MASK) << 2;

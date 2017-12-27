@@ -239,6 +239,13 @@ public :
             NES_TRACE1("    Mirroring: Horizontal");
         }
 
+        if (header.flag7 == 0x44)
+        {
+            // This might be one of the earlier dumps with bad iNes header (D stands for diskdude)
+            NES_TRACE1("[NES_ROM] Bad flag7 0x44 detected. Resetting to 0...");
+            header.flag7 = 0;
+        }
+
         NES_TRACE1("[NES_ROM] HEADER: Flags7 = 0x" << std::hex << (uint32_t) header.flag7);
         int mapper_id = ((header.flag6 & FLAG_6_LO_MAPPER_NUMBER_MASK) >> 4) + ((header.flag7 & FLAG_7_HI_MAPPER_NUMBER_MASK));
         NES_TRACE1("[NES_ROM] HEADER: Mapper_ID = " << std::dec << mapper_id);

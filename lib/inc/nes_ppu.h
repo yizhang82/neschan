@@ -288,6 +288,10 @@ public :
         _sprite_pattern_tbl_addr = (val & PPUCTRL_SPRITE_PATTERN_TABLE_ADDR_MASK) << 0x8;
 
         _use_8x16_sprite = val & PPUCTRL_SPRITE_SIZE_MASK;
+        if (_use_8x16_sprite)
+            _sprite_height = 16;
+        else
+            _sprite_height = 8;
 
         _ppu_addr_inc = (val & PPUCTRL_VRAM_ADDR_MASK) ? 0x20 : 1;
 
@@ -483,7 +487,15 @@ private :
         return read_byte(tile_addr | (bitplane << 3) | tile_row_index);
     }
    
-private :
+    uint8_t read_pattern_table_column_8x16_sprite(uint8_t tile_index, uint8_t bitplane, uint8_t tile_row_index)
+    {
+        // TTTTTTB - T is tile number and B is tile pattern table select $0000 or $1000
+        uint16_t tile_addr = ((uint16_t(tile_index) & 0x1) << 12) | ((uint16_t(tile_index) & ~0x1) << 4);
+
+        return read_byte(tile_addr | (bitplane << 3) | (tile_row_index & 0x7) | ((tile_row_index & 0x8) << 1));
+    }
+
+ private :
     nes_system *_system;
 
     unique_ptr<uint8_t[]> _vram;
@@ -496,6 +508,7 @@ private :
     uint16_t _ppu_addr_inc;
     bool _vblank_nmi;
     bool _use_8x16_sprite;
+    uint8_t _sprite_height;
 
     // PPUMASK
     bool _show_bg;
