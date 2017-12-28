@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "neschan.h"
+#include <iostream>
 
 using namespace std;
 
@@ -142,20 +143,36 @@ int main(int argc, char *argv[])
     // Initialize SDL with everything (video, audio, joystick, events, etc)
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0 )
     {
+        SDL_ShowSimpleMessageBox(
+            SDL_MESSAGEBOX_ERROR,
+            "SDL_Init Error",
+            SDL_GetError(),
+            NULL);
         return -1;
     }
 
-    //Create window
-    SDL_Window *sdlWindow;
-    SDL_Renderer *sdlRenderer;
-    SDL_CreateWindowAndRenderer(PPU_SCREEN_X * 2, PPU_SCREEN_Y * 2, SDL_WINDOW_SHOWN, &sdlWindow, &sdlRenderer);
+    const char *error = nullptr;
+    if (argc != 2)
+    {
+        SDL_ShowSimpleMessageBox(
+            SDL_MESSAGEBOX_ERROR,
+            "Usage error",
+            "Usage: neschan <rom_file_path>", 
+            NULL);
+        return -1;
+    }
 
-    SDL_SetWindowTitle(sdlWindow, "NESChan v0.1 by yizhang82");
+    SDL_Window *sdl_window;
+    SDL_Renderer *sdl_renderer;
+    SDL_CreateWindowAndRenderer(PPU_SCREEN_X * 2, PPU_SCREEN_Y * 2, SDL_WINDOW_SHOWN, &sdl_window, &sdl_renderer);
+
+    SDL_SetWindowTitle(sdl_window, "NESChan v0.1 by yizhang82");
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");  // make the scaled rendering look smoother.
-    SDL_RenderSetLogicalSize(sdlRenderer, PPU_SCREEN_X, PPU_SCREEN_Y);
+    SDL_RenderSetLogicalSize(sdl_renderer, PPU_SCREEN_X, PPU_SCREEN_Y);
 
-    SDL_Texture *sdlTexture = SDL_CreateTexture(sdlRenderer,
+    SDL_Texture *sdl_texture = SDL_CreateTexture(
+        sdl_renderer,
         SDL_PIXELFORMAT_ARGB8888,
         SDL_TEXTUREACCESS_STREAMING,
         PPU_SCREEN_X, PPU_SCREEN_Y);
@@ -166,7 +183,19 @@ int main(int argc, char *argv[])
 
     system.power_on();
     
-    system.load_rom(argv[1], nes_rom_exec_mode_reset);
+    try
+    {
+        system.load_rom(argv[1], nes_rom_exec_mode_reset);
+    }
+    catch (std::exception ex)
+    {
+        SDL_ShowSimpleMessageBox(
+            SDL_MESSAGEBOX_ERROR,
+            "ROM load error",
+            ex.what(),
+            NULL);
+        return -1;
+    }
 
     vector<uint32_t> pixels(PPU_SCREEN_Y * PPU_SCREEN_X);
 
@@ -194,17 +223,19 @@ int main(int argc, char *argv[])
         }
     }
 
-    SDL_Event sdlEvent;
-
+    SDL_Event sdl_event;
     Uint64 prev_counter = SDL_GetPerformanceCounter();
     Uint64 count_per_second = SDL_GetPerformanceFrequency();
 
+    //
+    // Game main loop
+    //
     bool quit = false;
     while (!quit)
     {
-        while (SDL_PollEvent(&sdlEvent) != 0)
+        while (SDL_PollEvent(&sdl_event) != 0)
         {
-            switch (sdlEvent.type)
+            switch (sdl_event.type)
             {
                 case SDL_QUIT:
                     quit = true;
@@ -217,12 +248,12 @@ int main(int argc, char *argv[])
         // We ask the NES to step corresponding CPU cycles
         //
         Uint64 cur_counter = SDL_GetPerformanceCounter();
-        
+
         Uint64 delta_ticks = cur_counter - prev_counter;
         prev_counter = cur_counter;
         if (delta_ticks == 0)
             delta_ticks = 1;
-        auto cpu_cycles = ms_to_nes_cycle((double) delta_ticks * 1000 / count_per_second);
+        auto cpu_cycles = ms_to_nes_cycle((double)delta_ticks * 1000 / count_per_second);
 
         // Avoids a scenario where the loop keeps getting longer
         if (cpu_cycles > nes_cycle_t(NES_CLOCK_HZ))
@@ -247,18 +278,21 @@ int main(int argc, char *argv[])
             }
         }
 
-        SDL_UpdateTexture(sdlTexture, NULL, pixels.data(), PPU_SCREEN_X * sizeof (uint32_t));
-
-        SDL_RenderClear(sdlRenderer);
-        SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
-        SDL_RenderPresent(sdlRenderer);
+        //
+        // Render
+        //
+        SDL_UpdateTexture(sdl_texture, NULL, pixels.data(), PPU_SCREEN_X * sizeof(uint32_t));
+        SDL_RenderClear(sdl_renderer);
+        SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
+        SDL_RenderPresent(sdl_renderer);
     }
 
     // Unregister all inputs and free the game controllers
     system.input()->unregister_all_inputs();
 
-    SDL_DestroyRenderer(sdlRenderer);
-    SDL_DestroyWindow(sdlWindow);
+    SDL_DestroyRenderer(sdl_renderer);
+    SDL_DestroyTexture(sdl_texture);
+    SDL_DestroyWindow(sdl_window);
 
     // Quit SDL subsystems
     SDL_Quit();

@@ -2,13 +2,12 @@
 
 ## What is it
 
-NesChan is a NES emulator I wrote just for fun. The idea of writing yet another NES emulator is inspired from a [medium post](https://medium.com/@fogleman/i-made-an-nes-emulator-here-s-what-i-learned-about-the-original-nintendo-2e078c9b28fe) I read recently. After reading nesdev wiki for a while I decided to give it a try mid-December 2017. It can play quite a few games perfectly (SMB, Super Contra, Shadow of the Ninja, etc). But it's still in its early stages and I'll update this when something changes. 
+NesChan is a NES emulator I wrote just for fun. The idea of writing yet another NES emulator is inspired from a [medium post](https://medium.com/@fogleman/i-made-an-nes-emulator-here-s-what-i-learned-about-the-original-nintendo-2e078c9b28fe) I read recently. After reading nesdev wiki for a while I decided to give it a try mid-December 2017. It took me around week and half to get quite a few major titles perfectly (SMB, Super Contra, Shadow of the Ninja, etc). But it's still in its early stages and I'll update this when something changes.
 
-It has 3 components:
+See *Super Mario Bros* and *Super Contra* in action:
 
-* *Neschan* - the main app that implements main game/rendering loop and controller support. Currently uses SDL.
-* Neschanlib - static library that emulate NES hardware. Other clients written in other languages can simply link to this library statically or dynamically (NYI). 
-* Test - using doctest with a combination of simple inline assembly and test roms (mostly from [NesDev Emulator Tests](http://wiki.nesdev.com/w/index.php/Emulator_tests))
+![img](doc/img/SMB.gif)
+![img](doc/img/super_contra.gif)
 
 ## What is the goal
 
@@ -55,6 +54,12 @@ You'll need VS 2017 and SDL2. Support for clang on mac/linux isn't available yet
 * Clone the repo
 * Download SDL development libraries [SDL2-devel-2.0.7-VC.zip](https://www.libsdl.org/download-2.0.php) and unzip it into dep/sdl2
 * Open *neschan.sln* in VS 2017 and build x64 Debug/Release
+
+Neschan.sln has 3 projects:
+
+* *Neschan* - the main app that implements main game/rendering loop and controller support. Currently uses SDL.
+* *Neschanlib* - static library that emulate NES hardware. Other clients written in other languages can simply link to this library statically or dynamically (NYI). 
+* *Test* - using doctest with a combination of simple inline assembly and test roms (mostly from [NesDev Emulator Tests](http://wiki.nesdev.com/w/index.php/Emulator_tests))
 
 ## How to run
 
