@@ -83,7 +83,7 @@ TEST_CASE("CPU tests") {
     }
 #define INSTR_V5_TEST_CASE(test) \
     SUBCASE("instr_test-v5 " test) { \
-        INIT_TRACE("neschan.instrtest.instr_test-v5." test "log"); \
+        INIT_TRACE("neschan.instrtest.instr_test-v5." test ".log"); \
         cout << "Running [CPU][instr_test-v5-" << test << "]" << endl; \
         system.power_on(); \
         auto cpu = system.cpu(); \
