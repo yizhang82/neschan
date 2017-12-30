@@ -73,6 +73,8 @@ private :
     // Emulation loop that is only intended for tests 
     void test_loop();
 
+    void init();
+
 private :
     nes_cycle_t _master_cycle;              // keep count of current cycle
 

@@ -17,15 +17,19 @@ nes_system::nes_system()
     _components.push_back(_cpu.get());
     _components.push_back(_ppu.get());
     _components.push_back(_input.get());
-
-    _stop_requested = false;
 }
                          
 nes_system::~nes_system() {}
 
-void nes_system::power_on()
+void nes_system::init()
 {
     _stop_requested = false;
+    _master_cycle = nes_cycle_t(0);
+}
+
+void nes_system::power_on()
+{
+    init();
 
     for (auto comp : _components)
         comp->power_on(this);
@@ -33,6 +37,8 @@ void nes_system::power_on()
 
 void nes_system::reset()
 {
+    init();
+
     for (auto comp : _components)
         comp->reset();
 }
