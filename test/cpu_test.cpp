@@ -10,8 +10,10 @@ using namespace std;
 TEST_CASE("CPU tests") {
     nes_system system;
 
-    SUBCASE("simple LDA/STA/ADD") {
-        INIT_TRACE_DEBUG("neschan.instrtest.simple.log");
+    SUBCASE("simple") {
+        INIT_TRACE("neschan.instrtest.simple.log");
+
+        cout << "Running [CPU][simple]..." << endl;
 
         system.power_on();
 
@@ -37,8 +39,10 @@ TEST_CASE("CPU tests") {
         CHECK(cpu->A() == 0x11);
         CHECK(cpu->Y() == 0x13);
     }
-    SUBCASE("flags") {
-        INIT_TRACE_DEBUG("neschan.instrtest.flags.log");
+    SUBCASE("simple_flags") {
+        INIT_TRACE("neschan.instrtest.simple_flags.log");
+
+        cout << "Running [CPU][simple_flags]..." << endl;
 
         system.power_on();
 
@@ -59,8 +63,9 @@ TEST_CASE("CPU tests") {
         CHECK(cpu->A() == 1);
         CHECK((cpu->P() & PROCESSOR_STATUS_CARRY_MASK));
     }
-    SUBCASE("full instruction test") {
-        INIT_TRACE_DEBUG("neschan.instrtest.full.log");
+    SUBCASE("nestest") {
+        INIT_TRACE("neschan.instrtest.full.log");
+        cout << "Running [CPU][nestest]..." << endl;
 
         system.power_on();
 
@@ -76,55 +81,30 @@ TEST_CASE("CPU tests") {
         CHECK(cpu->peek(0x2) == 0);
         CHECK(cpu->peek(0x3) == 0);
     }
-    /*
-    SUBCASE("instr_test-v5 official") {
-        INIT_TRACE("neschan.instrtest.instr_test-v5.official.log");
-
-        system.power_on();
-
-        system.run_rom("./roms/instr_test-v5/official_only.nes", nes_rom_exec_mode_reset);
-
-        auto cpu = system.cpu();
-
-        // Check the test is successful
-        CHECK(cpu->peek(0x6000) == 0);
-    }
-    */
-    SUBCASE("instr_test-v5 basics") {
-        INIT_TRACE("neschan.instrtest.instr_test-v5.basics.log");
-
-        system.power_on();
-        auto cpu = system.cpu();
-        cpu->stop_at_infinite_loop();
-
-        // cpu->stop_at_addr(0xE8D5);
-        system.run_rom("./roms/instr_test-v5/rom_singles/01-basics.nes", nes_rom_exec_mode_reset);
-
-        // Check the test is successful
-        CHECK(cpu->peek(0x6000) == 0);
-    }
-    SUBCASE("instr_test-v5 implied") {
-        INIT_TRACE("neschan.instrtest.instr_test-v5.implied.log");
-
-        system.power_on();
-        auto cpu = system.cpu();
-        cpu->stop_at_infinite_loop();
-
-        system.run_rom("./roms/instr_test-v5/rom_singles/02-implied.nes", nes_rom_exec_mode_reset);
-
-        // Check the test is successful
-        CHECK(cpu->peek(0x6000) == 0);
-    }
-    SUBCASE("instr_test-v5 absolute") {
-        INIT_TRACE_DEBUG("neschan.instrtest.instr_test-v5.absolute.log");
-
-        system.power_on();
-        auto cpu = system.cpu();
-        cpu->stop_at_infinite_loop();
-
-        system.run_rom("./roms/instr_test-v5/rom_singles/06-absolute.nes", nes_rom_exec_mode_reset);
-
-        // Check the test is successful
-        CHECK(cpu->peek(0x6000) == 0);
-    }
+#define INSTR_V5_TEST_CASE(test) \
+    SUBCASE("instr_test-v5 " test) { \
+        INIT_TRACE("neschan.instrtest.instr_test-v5." test "log"); \
+        cout << "Running [CPU][instr_test-v5-" << test << "]" << endl; \
+        system.power_on(); \
+        auto cpu = system.cpu(); \
+        cpu->stop_at_infinite_loop(); \
+        system.run_rom("./roms/instr_test-v5/rom_singles/" test ".nes", nes_rom_exec_mode_reset); \
+        CHECK(cpu->peek(0x6000) == 0); \
+    } 
+    INSTR_V5_TEST_CASE("01-basics")
+    INSTR_V5_TEST_CASE("02-implied")
+    // INSTR_V5_TEST_CASE("03-immediate")
+    INSTR_V5_TEST_CASE("04-zero_page")
+    INSTR_V5_TEST_CASE("05-zp_xy")
+    INSTR_V5_TEST_CASE("06-absolute")
+    // INSTR_V5_TEST_CASE("07-abs_xy")
+    INSTR_V5_TEST_CASE("08-ind_x")
+    INSTR_V5_TEST_CASE("09-ind_y")
+    INSTR_V5_TEST_CASE("10-branches")
+    INSTR_V5_TEST_CASE("11-stack")
+    INSTR_V5_TEST_CASE("12-jmp_jsr")
+    INSTR_V5_TEST_CASE("13-rts")
+    INSTR_V5_TEST_CASE("14-rti")
+    // INSTR_V5_TEST_CASE("15-brk")
+    // INSTR_V5_TEST_CASE("16-special")
 }

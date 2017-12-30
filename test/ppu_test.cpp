@@ -10,8 +10,9 @@ using namespace std;
 TEST_CASE("ppu_tests") {
     nes_system system;
 
-    SUBCASE("color test") {
+    SUBCASE("color_test") {
         INIT_TRACE("neschan.ppu.colortest.log");
+        cout << "Running [PPU][color_test]..." << endl;
 
         system.power_on();
 
@@ -33,6 +34,7 @@ TEST_CASE("ppu_tests") {
     }
     SUBCASE("vbl_clear_time") {
         INIT_TRACE("neschan.ppu.vbl_clear_time.log");
+        cout << "Running [PPU][vbl_clear_time]..." << endl;
 
         system.power_on();
 
@@ -46,6 +48,7 @@ TEST_CASE("ppu_tests") {
     }
     SUBCASE("sprite_ram") {
         INIT_TRACE("neschan.ppu.sprite_ram.log");
+        cout << "Running [PPU][sprite_ram]..." << endl;
 
         system.power_on();
 
@@ -59,8 +62,9 @@ TEST_CASE("ppu_tests") {
     }
     SUBCASE("vram_access") {
         INIT_TRACE("neschan.ppu.vram_access.log");
+        cout << "Running [PPU][vram_access]..." << endl;
 
-        system.power_on();
+        system.power_on(); 
 
         system.ppu()->stop_after_frame(10);
 
@@ -72,6 +76,7 @@ TEST_CASE("ppu_tests") {
     }
     SUBCASE("palette_ram") {
         INIT_TRACE("neschan.ppu.palette_ram.log");
+        cout << "Running [PPU][palette_ram]..." << endl;
 
         system.power_on();
 

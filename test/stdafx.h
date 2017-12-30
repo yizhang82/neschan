@@ -13,6 +13,7 @@
 #include <memory>
 #include <fstream>
 #include <string>
+#include <iostream>
 
 //
 // NESchan headers
