@@ -14,11 +14,11 @@ uint32_t make_argb(uint8_t r, uint8_t g, uint8_t b)
 
 #define JOYSTICK_DEADZONE 8000
 
-class neschan_exception : exception
+class neschan_exception : runtime_error 
 {
 public :
     neschan_exception(const char *msg)
-        :exception(msg)
+        :runtime_error(string(msg))
     {}
 };
 
@@ -59,8 +59,8 @@ private:
 };
 
 const SDL_Scancode sdl_keyboard_controller::s_buttons[] = {
-    SDL_SCANCODE_J,
     SDL_SCANCODE_L,
+    SDL_SCANCODE_J,
     SDL_SCANCODE_SPACE,
     SDL_SCANCODE_RETURN,
     SDL_SCANCODE_W,

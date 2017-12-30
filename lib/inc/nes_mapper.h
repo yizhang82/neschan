@@ -5,6 +5,8 @@
 #include <memory>
 #include <fstream>
 
+#include <common.h>
+
 using namespace std;
 
 enum nes_mapper_flags : uint16_t 
@@ -225,7 +227,7 @@ public :
             NES_TRACE1("[NES_ROM] Skipping trainer bytes...");
 
             // skip the 512-byte trainer
-            file.seekg(ios_base::cur, 0x200);
+            file.seekg(0x200, ios_base::cur);
         }
 
         NES_TRACE1("[NES_ROM] HEADER: Flags6 = 0x" << std::hex << (uint32_t) header.flag6);

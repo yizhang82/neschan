@@ -67,7 +67,7 @@ public :
         memcpy_s(dest, dest_size, &_ram[0] + src_addr, src_size);
     }
 
-    uint8_t set_word(uint16_t addr, uint16_t value)
+    void set_word(uint16_t addr, uint16_t value)
     {
         // NES 6502 CPU is little endian
         set_byte(addr, value & 0xff);

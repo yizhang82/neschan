@@ -1,5 +1,3 @@
-#pragma once
-
 #include "stdafx.h"
 
 #include "nes_ppu.h"
@@ -70,9 +68,11 @@ void nes_ppu::init()
     // PPUCTRL data
     _name_tbl_addr = 0;
     _bg_pattern_tbl_addr = 0;
+    _sprite_pattern_tbl_addr = 0;
     _ppu_addr_inc = 1;
     _vblank_nmi = false;
     _use_8x16_sprite = false;
+    _sprite_height = 8;
 
     // PPUMASK
     _show_bg = false;
@@ -90,23 +90,34 @@ void nes_ppu::init()
 
     // PPUSCROLL
     _addr_toggle = false;
-    _scroll_x = 0;
-    _scroll_y = 0;
 
     // PPUADDR
     _ppu_addr = 0;
+    _temp_ppu_addr = 0;
+    _fine_x_scroll = 0;
+    _scroll_y = 0;
+
+    // PPUDATA
+    _vram_read_buf = 0;
 
     _master_cycle = nes_cycle_t(0);
     _scanline_cycle = nes_cycle_t(0);
     _cur_scanline = 0;
+    _frame_count = 0;
 
     _protect_register = false;
-    _frame_count = 0;
     _stop_after_frame = -1;
     _auto_stop = false;
 
     _mask_oam_read = false;
     _frame_buffer = _frame_buffer_1;
+    memset(_frame_buffer_1, 0, sizeof(_frame_buffer_1));
+    memset(_frame_buffer_2, 0, sizeof(_frame_buffer_2));
+    memset(_frame_buffer_bg, 0, sizeof(_frame_buffer_bg));
+
+    _last_sprite_id = 0;
+    _has_sprite_0 = 0;
+    _mask_oam_read = 0; 
 }
 
 void nes_ppu::reset()

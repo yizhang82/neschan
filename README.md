@@ -1,4 +1,4 @@
-# NESChan - a NES emulator written just for fun
+# NESChan - a cross-platform NES emulator for Windows/Mac  
 
 ## What is it
 
@@ -9,11 +9,19 @@ See *Super Mario Bros* and *Super Contra* in action:
 ![img](doc/img/SMB.gif)
 ![img](doc/img/super_contra.gif)
 
+NesChan supports both Windows and Mac:
+
+![img](doc/img/neschan_mac.png)
+
 ## What is the goal
 
 Just for fun - it's fun learning about NES hardware, how the games work, and getting my favorite game working. It is almost as exciting as writing my own game - except I don't have to write any games. There is something magical about seeing the little pixel sprites moving around in screens.
 
 I don't plan to create the greatest emulator ever. As far as I can see [Mesen](https://www.mesen.ca/) is as good as it gets. 
+
+## Which platform is supported 
+
+Currently Windows and Mac. I've only tested on Windows 10 and mac OSX High Sierra but there is a good chance it should work in earlier versions. I haven't got around to try out linux yet but it should be relatively straight-forward given NesChan doesn't use any platform specific API nor libraries.
 
 ## What NES functionality is supported
 
@@ -49,6 +57,8 @@ I've tested with following games:
 
 ## How to build
 
+### Building on Windows
+
 You'll need VS 2017 and SDL2. Support for clang on mac/linux isn't available yet but should be straight-forward.
 
 * Clone the repo
@@ -60,6 +70,17 @@ Neschan.sln has 3 projects:
 * *Neschan* - the main app that implements main game/rendering loop and controller support. Currently uses SDL.
 * *Neschanlib* - static library that emulate NES hardware. Other clients written in other languages can simply link to this library statically or dynamically (NYI). 
 * *Test* - using doctest with a combination of simple inline assembly and test roms (mostly from [NesDev Emulator Tests](http://wiki.nesdev.com/w/index.php/Emulator_tests))
+
+### Building on Mac
+
+You'll need SDL2, XCode developer build tools, CMake. 
+
+* Clone the repo
+* Download SDL development libraries for Mac [SDL2-2.0.7.dmg](https://www.libsdl.org/download-2.0.php) and unzip it into dep/sdl2
+* Under neschan repo, create a bin directory 
+* cd bin
+* cmake -DCMAKE_BUILD_TYPE=release ..
+* make
 
 ## How to run
 

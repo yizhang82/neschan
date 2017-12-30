@@ -345,8 +345,6 @@ public :
     void write_OAMDATA(uint8_t val)
     {
         write_latch(val);
-        if (_oam_addr >= PPU_OAM_SIZE)
-            return;
 
         _oam[_oam_addr] = val;
         _oam_addr++;
@@ -356,9 +354,6 @@ public :
     {
         // @TODO - This exposes internal OAM access during rendering
         if (_mask_oam_read)
-            return 0xff;
-
-        if (_oam_addr >= PPU_OAM_SIZE)
             return 0xff;
 
         uint8_t val = _oam[_oam_addr];
@@ -381,7 +376,6 @@ public :
             // first write
             _temp_ppu_addr = (_temp_ppu_addr & 0xffe0) | (val >> 3);
             _fine_x_scroll = val & 0x7;
-            _scroll_x = val;
         }
         else
         {
@@ -531,8 +525,6 @@ private :
 
     // PPUSCROLL
     bool _addr_toggle;                  // the "w" register - see http://wiki.nesdev.com/w/index.php/PPU_scrolling
-    uint8_t _scroll_x;
-    uint8_t _scroll_y;
 
     // PPUADDR
     // yyy NN YYYYY XXXXX
@@ -543,6 +535,7 @@ private :
     uint16_t _ppu_addr;                 // the "v" register - see http://wiki.nesdev.com/w/index.php/PPU_scrolling
     uint16_t _temp_ppu_addr;            // the "t" register - see http://wiki.nesdev.com/w/index.php/PPU_scrolling
     uint8_t  _fine_x_scroll;            // the "x" register - see http://wiki.nesdev.com/w/index.php/PPU_scrolling 
+    uint8_t _scroll_y;                  // cached _scroll_y value
 
     // PPUDATA
     uint8_t _vram_read_buf;             // delayed VRAM reads

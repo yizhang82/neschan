@@ -125,7 +125,7 @@ void nes_cpu::exec_one_instruction()
     else
     {
         // next op
-        auto op_code = (nes_op_code)decode_byte();
+        auto op_code = decode_byte();
 
         // Let's start with a switch / case
         // Compiler should do good enough job to create a jump table
