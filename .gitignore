@@ -5,6 +5,6 @@
 **/x64
 *.log
 *.bak
-dep
+dep/sdl2
 .user
 bin
