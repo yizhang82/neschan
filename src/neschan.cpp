@@ -22,7 +22,7 @@ public :
     {}
 };
 
-class sdl_keyboard_controller : public nes_user_input
+class sdl_keyboard_controller : public nes_input_device
 {
 public:
     sdl_keyboard_controller()
@@ -69,7 +69,7 @@ const SDL_Scancode sdl_keyboard_controller::s_buttons[] = {
     SDL_SCANCODE_D
 };
 
-class sdl_game_controller : public nes_user_input
+class sdl_game_controller : public nes_input_device
 {
 public :
     sdl_game_controller(int id)

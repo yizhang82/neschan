@@ -28,12 +28,12 @@ enum nes_button_flags : uint8_t
 
 // Should be implemented by joystick/game controller code that are from other framework or platform specific
 // Example: SDL_game_controller : nes_user_input backed by SDL_GameController, etc
-class nes_user_input
+class nes_input_device
 {
 public :
     virtual nes_button_flags poll_status() = 0;
 
-    virtual ~nes_user_input() = 0;
+    virtual ~nes_input_device() = 0;
 };
 
 class nes_input : public nes_component
@@ -58,7 +58,7 @@ public :
     }
 
 public :
-    void register_input(int id, shared_ptr<nes_user_input> input) { _user_inputs[id] = input; }
+    void register_input(int id, shared_ptr<nes_input_device> input) { _user_inputs[id] = input; }
     void unregister_input(int id) { _user_inputs[id] = nullptr; }
     void unregister_all_inputs() { for (auto &input : _user_inputs) input = nullptr; }
 
@@ -115,5 +115,5 @@ public :
     bool _strobe_on;
     nes_button_flags _button_flags[NES_MAX_PLAYER];
     uint8_t _button_id[NES_MAX_PLAYER];
-    shared_ptr<nes_user_input> _user_inputs[NES_MAX_PLAYER];
+    shared_ptr<nes_input_device> _user_inputs[NES_MAX_PLAYER];
 };

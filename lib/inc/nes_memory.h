@@ -19,7 +19,7 @@ class nes_memory : public nes_component
 public :
     nes_memory()
     {
-        _ram = make_unique<uint8_t []>(RAM_SIZE);
+        _ram.reserve(RAM_SIZE);
     }
 
     bool is_io_reg(uint16_t addr)
@@ -108,7 +108,7 @@ public :
     }
 
 private :
-    unique_ptr<uint8_t[]> _ram;
+    vector<uint8_t>        _ram;
     shared_ptr<nes_mapper> _mapper;
 
     nes_system *_system;

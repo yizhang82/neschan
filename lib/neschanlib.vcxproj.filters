@@ -50,6 +50,9 @@
     <ClInclude Include="inc\nes_trace.h">
       <Filter>inc</Filter>
     </ClInclude>
+    <ClInclude Include="inc\nes_apu.h">
+      <Filter>inc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp" />
@@ -76,6 +79,9 @@
     </ClCompile>
     <ClCompile Include="src\nes_mapper_mmc3.cpp">
       <Filter>src\mappers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\nes_apu.cpp">
+      <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

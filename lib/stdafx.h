@@ -19,11 +19,12 @@
 //
 // NESchan headers
 //
-#include "nes_cycle.h"
-#include "nes_component.h"
-#include "nes_system.h"
-#include "nes_memory.h"
-#include "nes_mapper.h"
-#include "nes_ppu.h"
-#include "nes_cpu.h"
+#include <nes_cycle.h>
+#include <nes_component.h>
+#include <nes_system.h>
+#include <nes_memory.h>
+#include <nes_mapper.h>
+#include <nes_ppu.h>
+#include <nes_cpu.h>
 #include <nes_input.h>
+#include <nes_apu.h>

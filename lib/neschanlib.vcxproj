@@ -152,6 +152,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="inc\common.h" />
+    <ClInclude Include="inc\nes_apu.h" />
     <ClInclude Include="inc\nes_component.h" />
     <ClInclude Include="inc\nes_input.h" />
     <ClInclude Include="inc\nes_cpu.h" />
@@ -167,6 +168,7 @@
   <ItemGroup>
     <ClCompile Include="src\mappers\nes_mapper_mmc1.cpp" />
     <ClCompile Include="src\mappers\nes_mapper_nrom.cpp" />
+    <ClCompile Include="src\nes_apu.cpp" />
     <ClCompile Include="src\nes_cpu.cpp" />
     <ClCompile Include="src\nes_input.cpp" />
     <ClCompile Include="src\nes_mapper_mmc3.cpp" />

@@ -97,7 +97,7 @@ TEST_CASE("CPU tests") {
     INSTR_V5_TEST_CASE("04-zero_page")
     INSTR_V5_TEST_CASE("05-zp_xy")
     INSTR_V5_TEST_CASE("06-absolute")
-    // INSTR_V5_TEST_CASE("07-abs_xy")
+    INSTR_V5_TEST_CASE("07-abs_xy")
     INSTR_V5_TEST_CASE("08-ind_x")
     INSTR_V5_TEST_CASE("09-ind_y")
     INSTR_V5_TEST_CASE("10-branches")
