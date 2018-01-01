@@ -113,7 +113,15 @@ In the order of "most likely" to "probably never going to happen"... :)
 
 ## If you are interested in more details
 
-*TODO* - I'll write a series of blog post on my experience in developing a NES emulator in 2017. 
+I'm planning to write a series of technical posts talking about my experience.
+
+* [Writing your own NES Emulator - overview](http://yizhang82.me/nes-emu-overview)
+* TODO - emulation strategy
+* TODO - CPU emulation
+* TODO - PPU emulation
+* TODO - APU emulation
+* TODO - Tieing it all together with SDL
+* TODO - iNES format, and Mappers
 
 ## References
 
