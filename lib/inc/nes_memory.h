@@ -19,7 +19,7 @@ class nes_memory : public nes_component
 public :
     nes_memory()
     {
-        _ram.reserve(RAM_SIZE);
+        _ram.resize(RAM_SIZE);
     }
 
     bool is_io_reg(uint16_t addr)
