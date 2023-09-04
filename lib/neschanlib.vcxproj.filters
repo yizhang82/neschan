@@ -83,5 +83,8 @@
     <ClCompile Include="src\nes_apu.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\mappers\nes_mapper_474.cpp">
+      <Filter>src\mappers</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
