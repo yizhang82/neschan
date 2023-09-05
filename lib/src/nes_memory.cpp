@@ -41,13 +41,15 @@ void nes_memory::write_io_reg(uint16_t addr, uint8_t val)
     _ppu->write_latch(val);
 }
 
-void nes_memory::load_mapper(shared_ptr<nes_mapper> &mapper)
+void nes_memory::load_mapper(shared_ptr<nes_mapper>& mapper)
 {
     // unset previous mapper
     _mapper = nullptr;
-
     // Give mapper a chance to copy all the bytes needed
     mapper->on_load_ram(*this);
+
+    // Give mapper a chance to copy all the save data
+    mapper->on_load_sram(*this);
 
     _mapper = mapper;
     _mapper->get_info(_mapper_info);

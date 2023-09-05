@@ -95,5 +95,16 @@ void nes_system::step(nes_cycle_t count)
     // first place. Such as ram / controller, etc. 
     _cpu->step_to(_master_cycle);
     _ppu->step_to(_master_cycle);
+}  
+
+void nes_system::save(const char* rom_path)
+{
+    nes_mapper_info info;
+    _ram->get_mapper().get_info(info);
+    if (info.sram_size > 0)
+    {
+        auto save_sram = make_shared<vector<uint8_t>>(info.sram_size);
+        _ram->get_mapper().on_save_sram(_ram.get(), save_sram);
+        nes_rom_loader::save_save_file(rom_path, save_sram);
+    }
 }
-    
