@@ -286,6 +286,23 @@ int main(int argc, char *argv[])
         SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
         SDL_RenderPresent(sdl_renderer);
     }
+    
+    // make the program return zero
+    // unless we catch here
+    int errorCode = 0;
+    try
+    {
+        system.save(argv[1]);
+    }
+    catch (std::exception ex)
+    {
+        SDL_ShowSimpleMessageBox(
+            SDL_MESSAGEBOX_ERROR,
+            "SAVE file error",
+            ex.what(),
+            NULL);
+        errorCode = -1;
+    }
 
     // Unregister all inputs and free the game controllers
     system.input()->unregister_all_inputs();
@@ -297,5 +314,5 @@ int main(int argc, char *argv[])
     // Quit SDL subsystems
     SDL_Quit();
 
-    return 0;
+    return errorCode;
 }

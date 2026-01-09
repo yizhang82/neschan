@@ -53,6 +53,7 @@ public :
     nes_memory  *ram()      { return _ram.get();   }
     nes_ppu     *ppu()      { return _ppu.get();   } 
     nes_input   *input()    { return _input.get(); }
+    void save(const char* rom_path);
 
 public :
     //
